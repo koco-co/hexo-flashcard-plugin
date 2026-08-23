@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "domain_id": "local-progress",
+  "samples": [
+    {
+      "id": "SAMPLE-PROGRESS-001",
+      "feature_id": "F-010",
+      "kind": "normal",
+      "user_input": {"card_id": "http-404", "fsrs_card": null, "reviewed_at": "2026-08-24T10:00:00+08:00"},
+      "starting_state": ["卡片从未学习", "使用确定性 ts-fsrs 配置"],
+      "expected_behavior": ["createEmptyCard 创建新状态", "repeat 预览 Again、Hard、Good、Easy", "格式化四个候选 due"],
+      "expected_output": "忘记显示 10 分钟后；其余三档显示各自动态结果。",
+      "output_contract": {"semantic": ["四档预测来自同一次 ts-fsrs repeat 调用"]},
+      "assertions": ["候选数量为 4", "Again due 晚于当前时间 10 分钟", "候选包含完整 FSRS Card"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-002",
+      "feature_id": "F-010",
+      "kind": "boundary",
+      "user_input": {"card_id": "http-404", "rating": "记得", "rating_value": "Good"},
+      "starting_state": ["页面已预览四档候选", "fuzz 已关闭"],
+      "expected_behavior": ["用相同时间点和参数调用 next", "保存 Good 对应结果"],
+      "expected_output": "保存后的 due、stability、difficulty、state 与点击前 Good 候选一致。",
+      "output_contract": {"semantic": ["预览与提交不能产生不同到期时间"]},
+      "assertions": ["lastRating 为 good", "due 等于 Good 预测", "没有固定间隔阶梯字段"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-003",
+      "feature_id": "F-011",
+      "kind": "normal",
+      "user_input": {"card_id": "http-404", "due": "2026-08-30T10:00:00+08:00", "now": "2026-08-24T10:00:00+08:00"},
+      "starting_state": ["卡片已有本地 FSRS Card"],
+      "expected_behavior": ["比较 due 与 now", "未来卡不加入今日队列"],
+      "expected_output": "http-404 今日待复习：否。",
+      "output_contract": {"semantic": ["未来旧卡不是到期卡，也不是新卡"]},
+      "assertions": ["卡片不在到期队列", "卡片不计入新卡"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-004",
+      "feature_id": "F-012",
+      "kind": "normal",
+      "user_input": {"card_id": "http-404", "action": "刷新学习页面"},
+      "starting_state": ["localStorage v2 已保存 due、stability、difficulty、reps、lapses、state 和 last_review"],
+      "expected_behavior": ["按稳定 ID 读取 JSON", "把日期时间戳还原为 Date", "恢复完整 FSRS Card"],
+      "expected_output": "http-404 的 due 和全部 FSRS 数值字段与刷新前一致。",
+      "output_contract": {"semantic": ["同一浏览器刷新不能丢失或重算已提交状态"]},
+      "assertions": ["ID 保持 http-404", "due 未变化", "全部调度字段存在"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-005",
+      "feature_id": "F-013",
+      "kind": "normal",
+      "user_input": {"action": "清除本地进度", "confirmed": true},
+      "starting_state": ["当前浏览器有 25 张卡进度", "其中 5 张到期"],
+      "expected_behavior": ["显示固定确认文案", "确认后删除 v2 进度", "重新计算新卡与到期队列"],
+      "expected_output": "25 张卡恢复为新卡；到期旧卡为 0。",
+      "output_contract": {"semantic": ["确认清除后当前浏览器全部卡片恢复新卡状态"], "exact": ["清除后无法恢复当前浏览器中的学习进度。"]},
+      "assertions": ["v2 存储键被删除", "旧 due 不可恢复", "新卡数为 25"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-006",
+      "feature_id": "F-013",
+      "kind": "boundary",
+      "user_input": {"device": "另一台手机", "action": "首次打开同一博客"},
+      "starting_state": ["原设备存在进度", "新设备没有该站点 localStorage"],
+      "expected_behavior": ["只读取当前浏览器数据", "不请求原设备或云端进度"],
+      "expected_output": "新设备把全部卡片视为新卡。",
+      "output_contract": {"semantic": ["本版进度不跨设备同步"]},
+      "assertions": ["没有原设备状态", "没有外部同步请求"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-007",
+      "feature_id": "F-011",
+      "kind": "boundary",
+      "user_input": {"card_id": "http-404", "due": "2026-08-24T10:00:00+08:00", "now": "2026-08-24T10:00:00+08:00"},
+      "starting_state": ["卡片已有本地 FSRS Card", "due 恰好等于 now"],
+      "expected_behavior": ["使用 due <= now 判定", "把卡片加入到期队列"],
+      "expected_output": "http-404 已到期并进入今日复习队列。",
+      "output_contract": {"semantic": ["到期比较包含时间相等边界"]},
+      "assertions": ["卡片在到期队列", "待复习数量增加 1"],
+      "sensitive_data": "none"
+    }
+  ]
+}

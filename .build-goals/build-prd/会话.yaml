@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "status": "ready_for_authoring",
+  "source": {"project": "/Users/poco/Projects/hexo-flashcard-plugin", "revision": "confirmed-2026-08-24-ts-fsrs"},
+  "domain_map_confirmed_at": "2026-08-24T00:00:00+08:00",
+  "domains": [
+    {"id": "card-build", "name": "卡片声明与构建", "dependencies": [], "checkpoint": "功能域/card-build.yaml"},
+    {"id": "study-review", "name": "学习与复习", "dependencies": ["card-build"], "checkpoint": "功能域/study-review.yaml"},
+    {"id": "local-progress", "name": "本地进度", "dependencies": ["study-review"], "checkpoint": "功能域/local-progress.yaml"}
+  ],
+  "completed_domains": ["card-build", "study-review", "local-progress"],
+  "current_domain": null,
+  "pending_domains": [],
+  "confirmed_cross_domain_rules": [
+    "产品保持为薄 Hexo 插件，调度统一委托 ts-fsrs。",
+    "严格队列单向推进，不提供上一张、下一张或评价撤销。",
+    "到期旧卡与新卡分开建队列和计数。",
+    "Claude 给出的核心状态文案作为精确合同，不使用近义改写。"
+  ]
+}

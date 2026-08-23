@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "package_id": "hexo-flashcard-plugin",
+  "domains": [
+    {
+      "id": "card-build",
+      "file": "卡片声明与构建.yaml",
+      "sample_ids": ["SAMPLE-CARD-001", "SAMPLE-CARD-002", "SAMPLE-CARD-003", "SAMPLE-CARD-004", "SAMPLE-CARD-005", "SAMPLE-CARD-006", "SAMPLE-CARD-007"]
+    },
+    {
+      "id": "study-review",
+      "file": "学习与复习.yaml",
+      "sample_ids": ["SAMPLE-STUDY-001", "SAMPLE-STUDY-002", "SAMPLE-STUDY-003", "SAMPLE-STUDY-004", "SAMPLE-STUDY-005"]
+    },
+    {
+      "id": "local-progress",
+      "file": "本地进度.yaml",
+      "sample_ids": ["SAMPLE-PROGRESS-001", "SAMPLE-PROGRESS-002", "SAMPLE-PROGRESS-003", "SAMPLE-PROGRESS-004", "SAMPLE-PROGRESS-005", "SAMPLE-PROGRESS-006", "SAMPLE-PROGRESS-007"]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "name": "hexo-flashcard-plugin",
+  "version": "0.2.0",
+  "description": "Lightweight spaced-repetition flashcards for Hexo posts.",
+  "main": "index.js",
+  "type": "commonjs",
+  "files": [
+    "index.js",
+    "lib/",
+    "assets/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:unit": "node --test test/parser.test.js test/scheduler.test.js",
+    "test:integration": "node --test test/hexo-integration.test.js",
+    "check": "node --check index.js && node --check lib/*.js && node --check assets/flashcard.js && npm test"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "peerDependencies": {
+    "hexo": ">=8 <9"
+  },
+  "devDependencies": {
+    "hexo": "^8.1.2",
+    "hexo-renderer-ejs": "^2.0.0",
+    "hexo-renderer-marked": "^7.0.1"
+  },
+  "keywords": [
+    "hexo",
+    "flashcard",
+    "spaced-repetition"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ts-fsrs": "^5.4.1"
+  }
+}

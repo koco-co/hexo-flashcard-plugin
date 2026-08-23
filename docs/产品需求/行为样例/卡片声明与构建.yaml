@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "domain_id": "card-build",
+  "samples": [
+    {
+      "id": "SAMPLE-CARD-001",
+      "feature_id": "F-001",
+      "kind": "normal",
+      "user_input": {"article": "HTTP 状态码详解", "blocks": ["flashcard:http-404", "hideToggle:扩展阅读", "folding:状态码列表"]},
+      "starting_state": ["站点已启用插件", "文章包含三种内容块"],
+      "expected_behavior": ["只识别显式 flashcard", "其他内容保持原标签渲染"],
+      "expected_output": "学习卡片集合只包含 http-404。",
+      "output_contract": {"semantic": ["折叠展示内容不能被隐式转换为学习数据"]},
+      "assertions": ["生成卡片数为 1", "hideToggle 与 folding 输出仍存在"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-002",
+      "feature_id": "F-002",
+      "kind": "normal",
+      "user_input": {"types": ["basic", "cloze", "choice"], "sections": ["question", "answer", "explanation"], "explanation_content": ["code", "table", "link"]},
+      "starting_state": ["三张卡均有唯一 ID、卡组和非空三段内容", "填空卡含双中括号标记", "选择卡含三个选项及正确键 A"],
+      "expected_behavior": ["校验三段内容", "渲染问答、填空、选择类型", "保留解析中的富内容"],
+      "expected_output": "三张卡均生成；类型文案为问答、填空、选择；背面显示回答与解析。",
+      "output_contract": {"semantic": ["三类卡片均保留问题、精简回答和详细解析"], "exact": ["问答", "填空", "选择", "回答：", "解析："]},
+      "assertions": ["三张卡构建成功", "不出现挖空文案", "富内容保持可渲染"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-003",
+      "feature_id": "F-003",
+      "kind": "normal",
+      "user_input": {"id": "http-404", "article_default_deck": "HTTP 基础", "card_deck": "HTTP 状态码", "tags": "状态码,客户端错误"},
+      "starting_state": ["卡片 ID 全站唯一"],
+      "expected_behavior": ["单卡 deck 覆盖文章默认值", "把 tags 解析为两个标签", "为 deck 和 tags 生成筛选链接"],
+      "expected_output": "卡片显示 #HTTP 状态码、#状态码、#客户端错误。",
+      "output_contract": {"semantic": ["卡组与标签使用一致的可点击主题样式"], "exact": ["#HTTP 状态码", "#状态码", "#客户端错误"]},
+      "assertions": ["输出 deck 为 HTTP 状态码", "输出 tags 数量为 2", "三个主题均可点击"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-004",
+      "feature_id": "F-003",
+      "kind": "invalid",
+      "user_input": {"cards": [{"article": "HTTP 入门", "id": "http-404"}, {"article": "HTTP 错误处理", "id": "http-404"}]},
+      "starting_state": ["两篇文章进入同一次构建"],
+      "expected_behavior": ["发现全站重复 ID", "停止构建并指出两处来源"],
+      "expected_output": "构建失败：卡片 ID http-404 重复。",
+      "output_contract": {"semantic": ["重复身份不得进入站点"]},
+      "assertions": ["构建失败", "错误包含 ID 和两处来源"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-005",
+      "feature_id": "F-004",
+      "kind": "normal",
+      "user_input": {"build": "hexo generate", "valid_card_count": 12},
+      "starting_state": ["全部卡片结构有效", "ts-fsrs 已作为插件依赖安装"],
+      "expected_behavior": ["生成全局学习页", "生成文章入口", "输出 CSS、插件 JS 和本地 ts-fsrs UMD"],
+      "expected_output": "生成 /learn-topic/、/flashcard-assets/flashcard.css、flashcard.js 和 ts-fsrs.umd.js。",
+      "output_contract": {"semantic": ["核心学习资源不依赖运行时 CDN"]},
+      "assertions": ["四个静态资源路径存在", "学习页嵌入 12 张卡数据"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-006",
+      "feature_id": "F-004",
+      "kind": "invalid",
+      "user_input": {"article": "source/_posts/http.md", "card_id": "http-404", "question": "HTTP 404 表示什么？", "answer": "服务器找不到资源。", "explanation": ""},
+      "starting_state": ["作者运行 Hexo 构建"],
+      "expected_behavior": ["识别空 explanation", "停止构建并输出可定位原因"],
+      "expected_output": "构建失败：source/_posts/http.md 中卡片 http-404 的 explanation 为空。",
+      "output_contract": {"semantic": ["错误包含来源、卡片、字段和原因"]},
+      "assertions": ["构建失败", "日志包含 source/_posts/http.md、http-404 和 explanation"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-CARD-007",
+      "feature_id": "F-005",
+      "kind": "normal",
+      "user_input": {"article_card_count": 3, "back_content": ["answer", "table", "link"], "global_path": "/learn-topic/"},
+      "starting_state": ["文章和全局页面完成构建"],
+      "expected_behavior": ["自动编号 Q01 至 Q03", "点击卡片翻面并自适应高度", "问题、回答、解析标签与内容分别分行", "显示本篇入口", "不改写主题"],
+      "expected_output": "文章显示 Q01、Q02、Q03 和“复习本篇 · 3 张卡片”；/learn-topic/ 可访问。",
+      "output_contract": {"semantic": ["文章卡可翻面且文章入口数量来自实际卡片"], "exact": ["Q01", "Q02", "Q03", "复习本篇 · 3 张卡片", "/learn-topic/"]},
+      "assertions": ["桌面最多两列", "移动端单列", "问题、回答、解析内容另起一行", "背面链接可点击", "主题配置保持原值"],
+      "sensitive_data": "none"
+    }
+  ]
+}

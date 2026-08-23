@@ -1,0 +1,59 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const Hexo = require('hexo');
+const registerPlugin = require('..');
+
+test('generates article previews, CTA, learning page, and assets in a real Hexo site', async (t) => {
+  const pluginRoot = path.resolve(__dirname, '..');
+  const fixtureRoot = path.join(__dirname, 'fixtures', 'site');
+  const siteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hexo-flashcard-plugin-'));
+  fs.cpSync(fixtureRoot, siteRoot, { recursive: true });
+  fs.symlinkSync(path.join(pluginRoot, 'node_modules'), path.join(siteRoot, 'node_modules'), 'dir');
+
+  const hexo = new Hexo(siteRoot, { silent: true });
+  hexo.env.init = true;
+  t.after(async () => {
+    await hexo.exit();
+    fs.rmSync(siteRoot, { recursive: true, force: true });
+  });
+  await hexo.init();
+  registerPlugin(hexo);
+  await hexo.load();
+  await hexo.call('generate', {});
+
+  const postHtml = fs.readFileSync(path.join(siteRoot, 'public', 'demo', 'index.html'), 'utf8');
+  const learningHtml = fs.readFileSync(path.join(siteRoot, 'public', 'learn-topic', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.css'), 'utf8');
+  const js = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.js'), 'utf8');
+  const fsrs = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'ts-fsrs.umd.js'), 'utf8');
+
+  assert.match(postHtml, /data-hfc-inline/);
+  assert.match(postHtml, /复习本篇 · 3 张卡片/);
+  assert.match(postHtml, /flashcard-assets\/flashcard\.css/);
+  assert.match(postHtml, /flashcard-assets\/ts-fsrs\.umd\.js/);
+  assert.match(postHtml, /flashcard-assets\/flashcard\.js/);
+  assert.match(postHtml, /Q01/);
+  assert.match(postHtml, /#状态码/);
+  assert.match(postHtml, /填空/);
+  assert.match(postHtml, /问题:/);
+  assert.match(postHtml, /回答：/);
+  assert.match(postHtml, /解析：/);
+  assert.doesNotMatch(postHtml, /{%\s*flashcard/);
+
+  assert.match(learningHtml, /data-hfc-app/);
+  assert.match(learningHtml, /"id":"http-404"/);
+  assert.match(learningHtml, /"id":"http-cache"/);
+  assert.match(learningHtml, /"id":"http-success"/);
+  assert.doesNotMatch(learningHtml, /1、3、7、14、30、60、120 天/);
+  assert.match(css, /\.hfc-rating__grid/);
+  assert.match(css, /\.hfc-flip\.is-flipped/);
+  assert.match(js, /hexo-flashcard-plugin:v2/);
+  assert.match(js, /这张卡记得如何？/);
+  assert.match(js, /开始学习新卡/);
+  assert.match(fsrs, /global\.FSRS/);
+});

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "domain_id": "card-build",
+  "name": "卡片声明与构建",
+  "status": "confirmed",
+  "confirmed_at": "2026-08-24T00:00:00+08:00",
+  "dependencies": [],
+  "summary": "显式 flashcard 采用 question、answer、explanation 三段式内容，生成自适应文章翻转卡、可点击 deck/tags、本篇入口、学习页和本地静态资源。",
+  "features": [
+    {"id": "F-001", "name": "显式闪卡声明", "user_inputs": ["作者使用成对 flashcard 块。"], "outputs": {"semantic": ["只收录 flashcard；hideToggle 与 folding 保持原行为。"]}, "forbidden": ["不得隐式转换现有折叠内容。"], "acceptance": ["Given 文章混合三类标签，When 构建，Then 只有 flashcard 进入学习系统。"]},
+    {"id": "F-002", "name": "三类卡片与三段式内容", "user_inputs": ["作者提供非空 question、answer、explanation，并按类型补充填空标记或选择项。"], "outputs": {"semantic": ["生成问答、填空、选择卡，背面统一显示回答和解析。"]}, "acceptance": ["Given 三类卡内容有效，When 构建，Then 类型与富解析均正确渲染。"]},
+    {"id": "F-003", "name": "卡片身份、卡组与标签", "user_inputs": ["作者提供唯一 id、单一 deck 和可选逗号分隔 tags。"], "outputs": {"semantic": ["deck/tags 统一以 # 显示并可点击筛选。"]}, "acceptance": ["Given tags 为状态码,客户端错误，When 生成页面，Then 两个标签均可点击筛选。"]},
+    {"id": "F-004", "name": "构建校验与本地资源", "user_inputs": ["作者运行 Hexo 构建。"], "outputs": {"semantic": ["无效卡输出来源、ID、字段和原因；有效卡生成学习页、CSS、JS 和本地 ts-fsrs UMD。"]}, "acceptance": ["Given explanation 为空，When 构建，Then 构建失败并定位字段。"]},
+    {"id": "F-005", "name": "文章翻转卡与学习入口", "user_inputs": ["读者点击卡片或文章 CTA。"], "outputs": {"semantic": ["卡片自动 Q01 编号、桌面最多两列、移动端单列，背面高度自适应；问题、回答、解析标签与内容分行；CTA 为复习本篇 · N 张卡片。"]}, "external_contracts": ["默认入口 /learn-topic/。"], "acceptance": ["Given 文章有 3 张卡，When 生成，Then 显示 Q01-Q03 和复习本篇 · 3 张卡片。", "Given 文章卡翻到背面，When 显示问题、回答、解析，Then 三个标签后的内容分别另起一行。"]}
+  ],
+  "evidence": ["用户于 2026-08-24 确认翻转卡、三段式内容、标签筛选和精确文案。", "https://hexo.io/api/tag", "https://hexo.io/api/generator"]
+}
