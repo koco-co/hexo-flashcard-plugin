@@ -2,10 +2,10 @@
 .hfc-inline,
 .hfc-article-cta {
   --hfc-bg: var(--card-bg, rgba(255, 255, 255, 0.92));
-  --hfc-bg-soft: color-mix(in srgb, var(--card-bg, #fff) 86%, var(--theme-color, #49b1f5));
+  --hfc-bg-soft: color-mix(in srgb, var(--card-bg, #fff) 86%, var(--theme-color, var(--default-bg-color, #49b1f5)));
   --hfc-text: var(--font-color, #4c4948);
   --hfc-muted: var(--font-color, #4c4948);
-  --hfc-accent: var(--theme-color, var(--btn-bg, #49b1f5));
+  --hfc-accent: var(--theme-color, var(--default-bg-color, #49b1f5));
   --hfc-line: color-mix(in srgb, var(--font-color, #4c4948) 15%, transparent);
   --hfc-shadow: var(--card-box-shadow, 0 8px 24px rgba(28, 39, 49, 0.12));
   box-sizing: border-box;
@@ -492,7 +492,7 @@
 
 .hfc-button--primary {
   color: var(--btn-color, #fff) !important;
-  background: var(--btn-bg, var(--hfc-accent));
+  background: var(--hfc-accent);
 }
 
 .hfc-reset {

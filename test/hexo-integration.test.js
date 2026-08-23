@@ -52,6 +52,7 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.doesNotMatch(learningHtml, /1、3、7、14、30、60、120 天/);
   assert.match(css, /\.hfc-rating__grid/);
   assert.match(css, /\.hfc-flip\.is-flipped/);
+  assert.match(css, /--default-bg-color/);
   assert.match(js, /hexo-flashcard-plugin:v2/);
   assert.match(js, /这张卡记得如何？/);
   assert.match(js, /开始学习新卡/);
