@@ -5,7 +5,7 @@
     {
       "id": "card-build",
       "file": "卡片声明与构建.yaml",
-      "sample_ids": ["SAMPLE-CARD-001", "SAMPLE-CARD-002", "SAMPLE-CARD-003", "SAMPLE-CARD-004", "SAMPLE-CARD-005", "SAMPLE-CARD-006", "SAMPLE-CARD-007"]
+      "sample_ids": ["SAMPLE-CARD-001", "SAMPLE-CARD-002", "SAMPLE-CARD-003", "SAMPLE-CARD-004", "SAMPLE-CARD-005", "SAMPLE-CARD-006", "SAMPLE-CARD-007", "SAMPLE-CARD-008", "SAMPLE-CARD-009", "SAMPLE-CARD-010"]
     },
     {
       "id": "study-review",

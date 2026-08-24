@@ -150,7 +150,8 @@
     const deck = params.get('deck');
     const tag = params.get('tag');
     const scopedCards = allCards.filter((card) => {
-      if (article && card.articleKey !== article && card.articlePath !== article) return false;
+      const articleMatches = (card.articles || []).some((item) => item.articleKey === article || item.articlePath === article);
+      if (article && card.articleKey !== article && card.articlePath !== article && !articleMatches) return false;
       if (deck && card.deck !== deck) return false;
       if (tag && !(card.tags || []).includes(tag)) return false;
       return true;

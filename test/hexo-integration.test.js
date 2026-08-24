@@ -27,6 +27,7 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   await hexo.call('generate', {});
 
   const postHtml = fs.readFileSync(path.join(siteRoot, 'public', 'demo', 'index.html'), 'utf8');
+  const referenceHtml = fs.readFileSync(path.join(siteRoot, 'public', 'reference', 'index.html'), 'utf8');
   const learningHtml = fs.readFileSync(path.join(siteRoot, 'public', 'learn-topic', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.css'), 'utf8');
   const js = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.js'), 'utf8');
@@ -45,12 +46,23 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.match(postHtml, /解析：/);
   assert.doesNotMatch(postHtml, /{%\s*flashcard/);
 
+  assert.match(referenceHtml, /复习本篇 · 2 张卡片/);
+  assert.equal((referenceHtml.match(/data-card-id="http-404"/g) || []).length, 1);
+  assert.equal((referenceHtml.match(/data-card-id="http-method"/g) || []).length, 1);
+  assert.match(referenceHtml, /Q01/);
+  assert.match(referenceHtml, /Q02/);
+  assert.doesNotMatch(referenceHtml, /{%\s*flashcard_ref/);
+
   assert.match(learningHtml, /data-hfc-app/);
   assert.match(learningHtml, /<title>复习<\/title>/);
   assert.match(learningHtml, /<h1>复习<\/h1>/);
   assert.match(learningHtml, /"id":"http-404"/);
   assert.match(learningHtml, /"id":"http-cache"/);
   assert.match(learningHtml, /"id":"http-success"/);
+  assert.match(learningHtml, /"id":"http-method"/);
+  const cardData = JSON.parse(learningHtml.match(/<script id="hfc-card-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+  assert.equal(cardData.length, 4);
+  assert.deepEqual(cardData.find((card) => card.id === 'http-404').articles.map((article) => article.articlePath), ['demo/', 'reference/']);
   assert.doesNotMatch(learningHtml, /1、3、7、14、30、60、120 天/);
   assert.match(css, /\.hfc-rating__grid/);
   assert.match(css, /\.hfc-flip\.is-flipped/);

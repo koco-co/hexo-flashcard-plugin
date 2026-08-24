@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "package_id": "hexo-flashcard-plugin",
-  "package_version": "2.1.0",
+  "package_version": "2.2.0",
   "status": "confirmed",
   "package_type": "full",
   "generated_at": "2026-08-24",
@@ -37,12 +37,12 @@
   ],
   "external_dependencies": [],
   "files": [
-    {"path": "PRD需求文档.md", "sha256": "4b1159baad0ef5ad0bc59a043c9026c2ad643b61edf491c18c23a0039b9c6ce6"},
-    {"path": "功能域/卡片声明与构建.md", "sha256": "23563177e81205178c820be905781f90815f0dea82c02021cab1dfec2695dd57"},
+    {"path": "PRD需求文档.md", "sha256": "2b03e2ddf75fa97b6f0e252b359dfadcf6ba70ac43da05c7b90ea29a4591be6f"},
+    {"path": "功能域/卡片声明与构建.md", "sha256": "bba0d865770202c1968db350b7d93d02e82830ffb80991c6c116a6ac76ea01fa"},
     {"path": "功能域/学习与复习.md", "sha256": "3b5bed990e8126121275dbe6cab9ad6595068ce827e197c79ac12924610a28c3"},
     {"path": "功能域/本地进度.md", "sha256": "2e51dd45af1e6d08c91522c3e6dfb4ca8ef5287cdf81ef9806a4b39c9dcffd22"},
-    {"path": "行为样例/产品行为样例集.yaml", "sha256": "c264357b854434ab4161987ab01c90a2506a4482b3cba90d12ccd39d698a8cfd"},
-    {"path": "行为样例/卡片声明与构建.yaml", "sha256": "3b1fe859afca5bda02d6d984df41189a7e478112ba0dbebc89e5752c17874034"},
+    {"path": "行为样例/产品行为样例集.yaml", "sha256": "ce337ae3e2138e7037e236a6cbd0d2cac4c59ac5513f1f9900363148e68d1bb1"},
+    {"path": "行为样例/卡片声明与构建.yaml", "sha256": "863272e81d5a07be65ce6773f6ebbc05d0b6c7b9961f4e920be55347577b5606"},
     {"path": "行为样例/学习与复习.yaml", "sha256": "0b62df8dcc1a10b9e860782d8cc6b0eea5f5fa41f462169c968121c8a631516f"},
     {"path": "行为样例/本地进度.yaml", "sha256": "c6e186c77d1023207b03edc87164979bf6508c9e65937040d72af6fbe671a029"}
   ]

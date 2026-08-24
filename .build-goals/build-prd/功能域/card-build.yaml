@@ -5,13 +5,14 @@
   "status": "confirmed",
   "confirmed_at": "2026-08-24T00:00:00+08:00",
   "dependencies": [],
-  "summary": "显式 flashcard 采用 question、answer、explanation 三段式内容，生成自适应文章翻转卡、可点击 deck/tags、本篇入口、名称为复习的复习页和本地静态资源；宿主集成方提供桌面与移动端可见入口。",
+  "summary": "显式 flashcard 采用 question、answer、explanation 三段式内容；其他文章可用 flashcard_ref 按 ID 复用原卡内容、标签、卡组和进度。插件生成自适应文章翻转卡、可点击 deck/tags、本篇入口、名称为复习的复习页和本地静态资源；宿主集成方提供桌面与移动端可见入口。",
   "features": [
     {"id": "F-001", "name": "显式闪卡声明", "user_inputs": ["作者使用成对 flashcard 块。"], "outputs": {"semantic": ["只收录 flashcard；hideToggle 与 folding 保持原行为。"]}, "forbidden": ["不得隐式转换现有折叠内容。"], "acceptance": ["Given 文章混合三类标签，When 构建，Then 只有 flashcard 进入学习系统。"]},
     {"id": "F-002", "name": "三类卡片与三段式内容", "user_inputs": ["作者提供非空 question、answer、explanation，并按类型补充填空标记或选择项。"], "outputs": {"semantic": ["生成问答、填空、选择卡，背面统一显示回答和解析。"]}, "acceptance": ["Given 三类卡内容有效，When 构建，Then 类型与富解析均正确渲染。"]},
     {"id": "F-003", "name": "卡片身份、卡组与标签", "user_inputs": ["作者提供唯一 id、单一 deck 和可选逗号分隔 tags。"], "outputs": {"semantic": ["deck/tags 统一以 # 显示并可点击筛选。"]}, "acceptance": ["Given tags 为状态码,客户端错误，When 生成页面，Then 两个标签均可点击筛选。"]},
     {"id": "F-004", "name": "构建校验与本地资源", "user_inputs": ["作者运行 Hexo 构建。"], "outputs": {"semantic": ["无效卡输出来源、ID、字段和原因；有效卡生成学习页、CSS、JS 和本地 ts-fsrs UMD。"]}, "acceptance": ["Given explanation 为空，When 构建，Then 构建失败并定位字段。"]},
-    {"id": "F-005", "name": "文章翻转卡与学习入口", "user_inputs": ["读者点击卡片、文章 CTA 或宿主导航中的复习入口。"], "outputs": {"semantic": ["卡片自动 Q01 编号、桌面最多两列、移动端单列，背面高度自适应；问题、回答、解析标签与内容分行；CTA 为复习本篇 · N 张卡片；复习页 H1、浏览器标题、桌面导航和移动端菜单名称统一为复习。"]}, "external_contracts": ["默认路径 /learn-topic/。", "插件不自动修改主题；宿主集成方提供名称为复习的桌面和移动端入口。"], "acceptance": ["Given 文章有 3 张卡，When 生成，Then 显示 Q01-Q03 和复习本篇 · 3 张卡片。", "Given 文章卡翻到背面，When 显示问题、回答、解析，Then 三个标签后的内容分别另起一行。", "Given 宿主已集成插件，When 分别使用桌面导航和移动端菜单，Then 名称为复习的入口进入 /learn-topic/，页面 H1 与浏览器标题均为复习，PJAX 往返后仍可使用。"]}
+    {"id": "F-005", "name": "文章翻转卡与学习入口", "user_inputs": ["读者点击卡片、文章 CTA 或宿主导航中的复习入口。"], "outputs": {"semantic": ["卡片自动 Q01 编号、桌面最多两列、移动端单列，背面高度自适应；问题、回答、解析标签与内容分行；CTA 为复习本篇 · N 张卡片；复习页 H1、浏览器标题、桌面导航和移动端菜单名称统一为复习。"]}, "external_contracts": ["默认路径 /learn-topic/。", "插件不自动修改主题；宿主集成方提供名称为复习的桌面和移动端入口。"], "acceptance": ["Given 文章有 3 张卡，When 生成，Then 显示 Q01-Q03 和复习本篇 · 3 张卡片。", "Given 文章卡翻到背面，When 显示问题、回答、解析，Then 三个标签后的内容分别另起一行。", "Given 宿主已集成插件，When 分别使用桌面导航和移动端菜单，Then 名称为复习的入口进入 /learn-topic/，页面 H1 与浏览器标题均为复习，PJAX 往返后仍可使用。"]},
+    {"id": "F-014", "name": "跨文章引用卡片", "user_inputs": ["作者在另一篇文章中写 {% flashcard_ref id=\"http-404\" %}。"], "outputs": {"semantic": ["引用继承原卡内容、标签、卡组和稳定 ID，计入引用文章编号、筛选与 CTA；全站复习池和本地进度仍只有一份。"]}, "external_contracts": ["公开语法为单标签 {% flashcard_ref id=\"<card-id>\" %}。", "引用不允许覆盖原卡内容或元数据。"], "acceptance": ["Given 一篇文章定义 http-404 且另一篇引用，When 构建，Then 两篇均显示同一卡，引用文章筛选包含该卡且全站进度只有一份。", "Given 引用 ID 不存在，When 构建，Then 构建失败并指出文章和 ID。", "Given 同篇重复引用同一 ID，When 构建，Then 只渲染和计数一次。"]}
   ],
-  "evidence": ["用户于 2026-08-24 确认翻转卡、三段式内容、标签筛选、复习入口与精确文案。", "https://hexo.io/api/tag", "https://hexo.io/api/generator"]
+  "evidence": ["用户于 2026-08-24 确认翻转卡、三段式内容、标签筛选、复习入口、flashcard_ref 跨文章引用与精确文案。", "https://hexo.io/api/tag", "https://hexo.io/api/generator"]
 }

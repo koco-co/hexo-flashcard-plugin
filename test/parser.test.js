@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { collectFlashcards, parseAttributes, parseFlashcards } = require('../lib/parser');
+const { collectFlashcards, parseAttributes, parseFlashcardReferences, parseFlashcards } = require('../lib/parser');
 
 test('only parses explicit three-section flashcard blocks', () => {
   const raw = `
@@ -34,6 +34,18 @@ test('tokenizes quoted attribute values containing spaces', () => {
     deck: 'HTTP 基础',
     tags: '状态码,客户端错误'
   });
+  assert.deepEqual(parseAttributes('id="http-404"'), { id: 'http-404' });
+});
+
+test('parses flashcard_ref with a single id attribute', () => {
+  const references = parseFlashcardReferences('{% flashcard_ref id="http-404" %}', {
+    source: 'interview.md',
+    articleKey: '_posts/interview.md'
+  });
+  assert.equal(references.length, 1);
+  assert.equal(references[0].id, 'http-404');
+  assert.equal(references[0].articleKey, '_posts/interview.md');
+  assert.throws(() => parseFlashcardReferences('{% flashcard_ref id="http-404" deck="HTTP" %}', { source: 'bad.md' }), /deck.*not supported/);
 });
 
 test('parses fill and choice cards with explicit answers and explanations', () => {
@@ -75,6 +87,26 @@ test('rejects duplicate ids and identifies both sources', () => {
   assert.throws(
     () => collectFlashcards([{ raw: card('Q'), source: 'a.md' }, { raw: card('Q2'), source: 'b.md' }]),
     (error) => error.name === 'FlashcardValidationError' && error.message.includes('b.md') && error.message.includes('same') && error.message.includes('a.md')
+  );
+});
+
+test('links one canonical card to multiple articles without duplicating identity', () => {
+  const definition = `{% flashcard basic id:http-404 deck:d %}\n--- question\nQ\n--- answer\nA\n--- explanation\nE\n{% endflashcard %}`;
+  const cards = collectFlashcards([
+    { raw: definition, source: 'definition.md', articleKey: '_posts/definition.md', articlePath: 'definition/' },
+    { raw: '{% flashcard_ref id="http-404" %}\n{% flashcard_ref id="http-404" %}', source: 'interview.md', articleKey: '_posts/interview.md', articlePath: 'interview/' }
+  ]);
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0].id, 'http-404');
+  assert.equal(cards[0].articles.length, 2);
+  assert.deepEqual(cards[0].articles.map((article) => article.articleKey), ['_posts/definition.md', '_posts/interview.md']);
+  assert.equal(cards[0].articles[1].articleCount, 1);
+});
+
+test('rejects references to missing card ids', () => {
+  assert.throws(
+    () => collectFlashcards([{ raw: '{% flashcard_ref id="http-999" %}', source: 'interview.md', articleKey: '_posts/interview.md' }]),
+    (error) => error.name === 'FlashcardValidationError' && error.message.includes('interview.md') && error.message.includes('http-999') && error.message.includes('does not exist')
   );
 });
 
