@@ -66,6 +66,17 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.doesNotMatch(learningHtml, /1、3、7、14、30、60、120 天/);
   assert.match(css, /\.hfc-rating__grid/);
   assert.match(css, /grid-template-columns:\s*4\.2rem minmax\(0, 1fr\)/);
+  assert.match(css, /\.hfc-app\s*{[^}]*width:\s*100%;/s);
+  assert.match(css, /--hfc-surface:\s*linear-gradient\(135deg, rgba\(220, 243, 242, 0\.98\) 0%, rgba\(245, 243, 237, 0\.98\) 52%, rgba\(247, 220, 213, 0\.96\) 100%\);/);
+  assert.match(css, /--hfc-option-bg:\s*rgba\(249, 247, 241, 0\.58\);/);
+  assert.match(css, /\[data-theme='dark'\] \.hfc-app,[\s\S]*--hfc-bg:\s*var\(--card-bg, rgba\(18, 18, 18, 0\.94\)\);/);
+  assert.match(css, /\[data-theme='dark'\] \.hfc-app,[\s\S]*--hfc-surface:\s*var\(--card-bg, #121212\);/);
+  assert.match(css, /\.hfc-study-card\s*{[^}]*width:\s*100%;/s);
+  assert.match(css, /\.hfc-inline\s*{[^}]*display:\s*block;[^}]*width:\s*100%;/s);
+  assert.doesNotMatch(css, /calc\(50% - 10px\)/);
+  assert.match(css, /\.hfc-question\s*{[^}]*display:\s*flex;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /\.hfc-options\s*{[^}]*width:\s*100%;[^}]*margin:\s*18px 0 0;/s);
+  assert.match(css, /\.hfc-options > div > :last-child\s*{[^}]*margin:\s*0\s*!important;/s);
   assert.match(css, /\.hfc-flip\.is-flipped/);
   assert.match(css, /--default-bg-color/);
   assert.match(js, /hexo-flashcard-plugin:v2/);

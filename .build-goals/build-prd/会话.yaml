@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "status": "ready_for_authoring",
-  "source": {"project": "/Users/poco/Projects/hexo-flashcard-plugin", "revision": "confirmed-2026-08-24-ts-fsrs"},
+  "source": {"project": "/Users/poco/Projects/hexo-flashcard-plugin", "revision": "confirmed-2026-08-24-soft-gradient-card"},
   "domain_map_confirmed_at": "2026-08-24T00:00:00+08:00",
   "domains": [
     {"id": "card-build", "name": "卡片声明与构建", "dependencies": [], "checkpoint": "功能域/card-build.yaml"},
@@ -17,6 +17,8 @@
     "到期旧卡与新卡分开建队列和计数。",
     "Claude 给出的核心状态文案作为精确合同，不使用近义改写。",
     "公开页面名称、页面 H1、浏览器标题、桌面导航和移动端菜单统一为复习；插件不自动修改主题，宿主集成方负责提供可发现入口并验证 PJAX。",
-    "flashcard 是卡片唯一内容源；其他文章用单标签 flashcard_ref 按 ID 引用，继承内容与进度，计入引用文章筛选和 CTA，同篇重复引用去重，缺失 ID 阻止构建。"
+    "flashcard 是卡片唯一内容源；其他文章用单标签 flashcard_ref 按 ID 引用，继承内容与进度，计入引用文章筛选和 CTA，同篇重复引用去重，缺失 ID 阻止构建。",
+    "文章卡和复习卡均为父容器全宽单列，高度随当前卡面内容变化；复习卡背面的问题、回答、解析共享同一正文起点，选择题的问题与选项共享左侧轴线且作为整体垂直居中。",
+    "浅色模式卡面统一使用低饱和青蓝—中性—淡粉渐变，选择项使用半透明中性色；深色模式继续继承宿主深色卡片背景。"
   ]
 }
