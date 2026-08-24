@@ -200,23 +200,22 @@
     function renderCard() {
       const card = queue[completed];
       if (!card) return renderComplete();
-      const now = Date.now();
-      const preview = scheduler.repeat(deserializeCard(progress.cards[card.id], now), new Date(now));
+      const reviewedAt = Date.now();
+      const preview = scheduler.repeat(deserializeCard(progress.cards[card.id], reviewedAt), new Date(reviewedAt));
       const predictions = Object.fromEntries(RATING_NAMES.map((rating) => [rating, serializeCard(preview[RATING_VALUES[rating]].card, rating)]));
-      stage.innerHTML = `<section class="hfc-session">${shellHeader(queue.length - completed)}${studyCardMarkup(card, completed + 1, predictions, now, config)}</section>`;
+      stage.innerHTML = `<section class="hfc-session">${shellHeader(queue.length - completed)}${studyCardMarkup(card, completed + 1, predictions, reviewedAt, config)}</section>`;
       stage.querySelectorAll('[data-hfc-rate]').forEach((button) => {
         button.addEventListener('click', (event) => {
           event.stopPropagation();
-          record(card, button.dataset.hfcRate);
+          record(card, button.dataset.hfcRate, reviewedAt);
         });
       });
       prepareFlips(stage);
       announce(`已完成 ${completed} · 待复习 ${queue.length - completed}`);
     }
 
-    function record(card, rating) {
-      const now = Date.now();
-      const result = scheduler.next(deserializeCard(progress.cards[card.id], now), new Date(now), RATING_VALUES[rating]);
+    function record(card, rating, reviewedAt) {
+      const result = scheduler.next(deserializeCard(progress.cards[card.id], reviewedAt), new Date(reviewedAt), RATING_VALUES[rating]);
       progress.cards[card.id] = serializeCard(result.card, rating);
       saveProgress(progress);
       ratings[rating] += 1;

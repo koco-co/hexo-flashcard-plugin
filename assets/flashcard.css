@@ -237,12 +237,12 @@
 .hfc-explanation-section {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  gap: 10px;
 }
 
 .hfc-back-question {
-  display: grid;
-  grid-template-columns: 4.2em minmax(0, 1fr);
-  gap: 10px;
   margin: 16px 0 0;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--hfc-line);
@@ -256,9 +256,6 @@
 
 .hfc-answer-section,
 .hfc-explanation-section {
-  display: grid;
-  grid-template-columns: 4.2em minmax(0, 1fr);
-  gap: 10px;
   margin-top: 20px;
   line-height: 1.75;
 }
