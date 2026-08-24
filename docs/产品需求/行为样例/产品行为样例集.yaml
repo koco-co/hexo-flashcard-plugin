@@ -16,6 +16,11 @@
       "id": "local-progress",
       "file": "本地进度.yaml",
       "sample_ids": ["SAMPLE-PROGRESS-001", "SAMPLE-PROGRESS-002", "SAMPLE-PROGRESS-003", "SAMPLE-PROGRESS-004", "SAMPLE-PROGRESS-005", "SAMPLE-PROGRESS-006", "SAMPLE-PROGRESS-007", "SAMPLE-PROGRESS-008", "SAMPLE-PROGRESS-009"]
+    },
+    {
+      "id": "cloud-sync",
+      "file": "云端同步.yaml",
+      "sample_ids": ["SAMPLE-SYNC-001", "SAMPLE-SYNC-002", "SAMPLE-SYNC-003", "SAMPLE-SYNC-004", "SAMPLE-SYNC-005", "SAMPLE-SYNC-006"]
     }
   ]
 }

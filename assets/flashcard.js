@@ -10,6 +10,7 @@
   const PRIORITY_LABELS = { 1: '高频', 2: '中频', 3: '低频' };
   const shardPromises = new Map();
   const cardCache = new Map();
+  let activeSyncController = null;
 
   function parseJsonScript(id, fallback) {
     const node = document.getElementById(id);
@@ -229,6 +230,7 @@
   }
 
   function reconcileDailyTasks(progress, cards, now = Date.now()) {
+    const before = JSON.stringify(progress.days);
     const today = localDateKey(now);
     cards.forEach((card) => {
       const state = progress.cards[card.id];
@@ -239,6 +241,7 @@
       if (dueKey < today) ensureTask(progress, today, card.id, state.due);
     });
     saveProgress(progress);
+    return before !== JSON.stringify(progress.days);
   }
 
   async function createApp(root) {
@@ -247,7 +250,7 @@
     const stage = root.querySelector('[data-hfc-stage]');
     const plan = root.querySelector('[data-hfc-plan]');
     const live = root.querySelector('[data-hfc-live]');
-    const config = parseJsonScript('hfc-config-data', { root: '/', learningPath: 'learn-topic', assetBase: '/flashcard-assets', cardIndexUrl: '/flashcard-assets/cards/index.json' });
+    const config = parseJsonScript('hfc-config-data', { root: '/', learningPath: 'learn-topic', assetBase: '/flashcard-assets', cardIndexUrl: '/flashcard-assets/cards/index.json', sync: { enabled: false } });
     const params = new URLSearchParams(location.search);
     const article = params.get('article');
     const deck = params.get('deck');
@@ -265,9 +268,64 @@
     let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let drawerState = null;
     let renderToken = 0;
+    let syncController = null;
 
     function announce(message) {
       if (live) live.textContent = message;
+    }
+
+    function updateResetLabels(authenticated) {
+      root.querySelectorAll('[data-hfc-reset]').forEach((button) => {
+        button.textContent = authenticated ? '重置全部进度' : '清除本地进度';
+      });
+    }
+
+    function resetLabel() {
+      return syncController?.isAuthenticated() ? '重置全部进度' : '清除本地进度';
+    }
+
+    function renderSyncState(state) {
+      const panel = root.querySelector('[data-hfc-sync]');
+      if (!panel) return;
+      const status = panel.querySelector('[data-hfc-sync-status]');
+      const login = panel.querySelector('[data-hfc-login]');
+      const syncNow = panel.querySelector('[data-hfc-sync-now]');
+      const logout = panel.querySelector('[data-hfc-logout]');
+      const labels = {
+        authorizing: '正在前往 GitHub 登录…',
+        error: '云端暂不可用，本地进度已安全保存',
+        local: '未登录，进度仅保存在此浏览器',
+        offline: '当前离线，本地进度将在联网后同步',
+        ready: '已登录，正在检查云端进度',
+        resetting: '正在重置所有设备的进度…',
+        synced: '本地与云端进度已同步',
+        syncing: '正在同步，本地操作不受影响',
+        unavailable: '云同步配置不可用，当前使用本地进度'
+      };
+      if (status) status.textContent = labels[state.status] || '进度保存在此浏览器';
+      if (login) login.hidden = state.authenticated || ['authorizing', 'unavailable'].includes(state.status);
+      if (syncNow) syncNow.hidden = !state.authenticated;
+      if (logout) logout.hidden = !state.authenticated;
+      panel.dataset.hfcSyncState = state.status;
+      updateResetLabels(state.authenticated);
+    }
+
+    function refreshFromProgress() {
+      if (root.querySelector('[data-hfc-session-state="reviewing"]')) {
+        renderCalendar();
+        return;
+      }
+      const due = dueCards();
+      if (due.length) start(due);
+      else renderEmpty();
+    }
+
+    function applySyncedProgress(nextProgress) {
+      progress = nextProgress;
+      saveProgress(progress);
+      const derivedChange = allCards.length ? reconcileDailyTasks(progress, allCards) : false;
+      refreshFromProgress();
+      return derivedChange;
     }
 
     function scopeCards(cards) {
@@ -449,7 +507,7 @@
       const unseen = newCards().length;
       stage.innerHTML = `<section class="hfc-session hfc-session--empty" data-hfc-session-state="empty">${shellHeader(0, true)}
         <div class="hfc-empty"><span class="hfc-state-mark hfc-state-mark--empty" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 10.5h15a6 6 0 0 1 6 6v21H18a6 6 0 0 0-6 6z"/><path d="M36 10.5h-3v27h3z"/><path d="M17 18h10M17 24h10"/></svg></span><strong>暂无到期卡片</strong><p>你可以去学习新卡，或稍后再来</p><button class="hfc-button hfc-button--primary" type="button" data-hfc-new ${unseen ? '' : 'disabled'}>开始</button></div>
-        <button class="hfc-reset" type="button" data-hfc-reset>清除本地进度</button>
+        <button class="hfc-reset" type="button" data-hfc-reset>${resetLabel()}</button>
       </section>`;
       stage.querySelector('[data-hfc-new]')?.addEventListener('click', () => start(newCards()));
       stage.querySelector('[data-hfc-reset]')?.addEventListener('click', resetProgress);
@@ -512,6 +570,7 @@
         task.completedAt = null;
       }
       saveProgress(progress);
+      syncController?.markDirty();
       ratings[rating] += 1;
       completed += 1;
       renderCard();
@@ -522,7 +581,7 @@
         <div class="hfc-complete"><span class="hfc-state-mark hfc-state-mark--complete" aria-hidden="true">✓</span><strong>今日复习已全部完成</strong><p>共复习 ${queue.length} 张卡片，明天再见 👋</p><button class="hfc-button hfc-button--primary" type="button" data-hfc-stats>查看今日复习统计</button>
           <div class="hfc-today-stats" data-hfc-today-stats hidden>${RATING_NAMES.map((rating) => `<div><strong>${RATING_LABELS[rating]}</strong><span>${ratings[rating]}</span></div>`).join('')}</div>
         </div>
-        <button class="hfc-reset" type="button" data-hfc-reset>清除本地进度</button>
+        <button class="hfc-reset" type="button" data-hfc-reset>${resetLabel()}</button>
       </section>`;
       stage.querySelector('[data-hfc-stats]')?.addEventListener('click', () => {
         stage.querySelector('[data-hfc-today-stats]').hidden = false;
@@ -532,10 +591,18 @@
       announce(`已完成 ${queue.length} · 待复习 0`);
     }
 
-    function resetProgress() {
+    async function resetProgress() {
+      if (syncController?.isAuthenticated()) {
+        const value = window.prompt('这会清除所有设备上的复习进度。请输入“重置”继续。');
+        if (value !== '重置') return;
+        const reset = await syncController.resetEverywhere();
+        if (!reset) announce('云端重置失败，本地进度未被清除');
+        return;
+      }
       if (!window.confirm('清除后无法恢复当前浏览器中的学习进度。')) return;
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(LEGACY_STORAGE_KEY);
+      syncController?.resetLocalMetadata();
       progress = loadProgress();
       const due = dueCards();
       if (due.length) start(due);
@@ -553,6 +620,21 @@
       const due = dueCards();
       if (due.length) start(due);
       else renderEmpty();
+
+      if (config.sync?.enabled && window.HFC_SYNC) {
+        activeSyncController?.dispose();
+        syncController = window.HFC_SYNC.createSyncController({
+          config: config.sync,
+          getProgress: () => progress,
+          applyProgress: applySyncedProgress,
+          onState: renderSyncState
+        });
+        activeSyncController = syncController;
+        root.querySelector('[data-hfc-login]')?.addEventListener('click', () => syncController.signIn());
+        root.querySelector('[data-hfc-sync-now]')?.addEventListener('click', () => syncController.syncNow());
+        root.querySelector('[data-hfc-logout]')?.addEventListener('click', () => syncController.signOut());
+        syncController.init();
+      }
     } catch (error) {
       stage.innerHTML = '<section class="hfc-session hfc-session--error"><p>复习内容加载失败，请稍后重试。</p></section>';
       if (plan) plan.innerHTML = '';
@@ -624,6 +706,10 @@
 
   function init() {
     document.querySelectorAll('[data-hfc-drawer]').forEach((drawer) => drawer.remove());
+    if (!document.querySelector('[data-hfc-app]')) {
+      activeSyncController?.dispose();
+      activeSyncController = null;
+    }
     initFlipInteractions();
     prepareFlips();
     document.querySelectorAll('[data-hfc-app]').forEach(createApp);

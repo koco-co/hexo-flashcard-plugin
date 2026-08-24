@@ -5,3 +5,7 @@ permalink: :title/
 theme: fixture
 flashcard:
   path: learn-topic
+  sync:
+    enabled: true
+    supabase_url: https://example.supabase.co
+    supabase_publishable_key: publishable-test-key

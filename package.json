@@ -1,6 +1,6 @@
 {
   "name": "hexo-flashcard-plugin",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Lightweight spaced-repetition flashcards for Hexo posts.",
   "main": "index.js",
   "type": "commonjs",
@@ -8,13 +8,14 @@
     "index.js",
     "lib/",
     "assets/",
+    "supabase/migrations/",
     "README.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
     "test:unit": "node --test test/parser.test.js test/scheduler.test.js",
     "test:integration": "node --test test/hexo-integration.test.js",
-    "check": "node --check index.js && node --check lib/*.js && node --check assets/flashcard.js && npm test"
+    "check": "node --check index.js && node --check lib/*.js && node --check assets/flashcard.js && node --check assets/flashcard-sync.js && npm test"
   },
   "engines": {
     "node": ">=20.19.0"
@@ -34,6 +35,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "2.109.0",
     "ts-fsrs": "^5.4.1"
   }
 }

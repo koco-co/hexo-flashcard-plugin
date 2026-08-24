@@ -31,7 +31,9 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   const learningHtml = fs.readFileSync(path.join(siteRoot, 'public', 'learn-topic', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.css'), 'utf8');
   const js = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.js'), 'utf8');
+  const syncJs = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard-sync.js'), 'utf8');
   const fsrs = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'ts-fsrs.umd.js'), 'utf8');
+  const supabase = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'supabase.js'), 'utf8');
   const cardIndex = JSON.parse(fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'cards', 'index.json'), 'utf8'));
 
   assert.match(postHtml, /data-hfc-inline/);
@@ -42,6 +44,8 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.match(postHtml, /hfc-review-label">复习</);
   assert.match(postHtml, /flashcard-assets\/flashcard\.css/);
   assert.match(postHtml, /flashcard-assets\/ts-fsrs\.umd\.js/);
+  assert.match(postHtml, /flashcard-assets\/supabase\.js/);
+  assert.match(postHtml, /flashcard-assets\/flashcard-sync\.js/);
   assert.match(postHtml, /flashcard-assets\/flashcard\.js/);
   assert.match(postHtml, /Q01/);
   assert.match(postHtml, /#状态码/);
@@ -63,6 +67,8 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
 
   assert.match(learningHtml, /data-hfc-app/);
   assert.match(learningHtml, /data-hfc-plan/);
+  assert.match(learningHtml, /data-hfc-sync/);
+  assert.match(learningHtml, /使用 GitHub 登录并同步/);
   assert.match(learningHtml, /<title>复习<\/title>/);
   assert.match(learningHtml, /<h1>复习<\/h1>/);
   assert.match(learningHtml, /"cardIndexUrl":"\/flashcard-assets\/cards\/index\.json"/);
@@ -138,4 +144,7 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.match(js, /record\(card, button\.dataset\.hfcRate, reviewedAt\)/);
   assert.match(js, /scheduler\.next\(deserializeCard\(previous, reviewedAt\), new Date\(reviewedAt\), RATING_VALUES\[rating\]\)/);
   assert.match(fsrs, /global\.FSRS/);
+  assert.match(syncJs, /sync_flashcard_progress/);
+  assert.match(syncJs, /reset_flashcard_progress/);
+  assert.match(supabase, /createClient/);
 });

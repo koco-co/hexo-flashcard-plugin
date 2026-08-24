@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "domain_id": "cloud-sync",
+  "name": "云端同步",
+  "status": "confirmed",
+  "confirmed_at": "2026-08-25T03:18:52+08:00",
+  "dependencies": ["local-progress"],
+  "summary": "宿主可选接入 Supabase；读者未登录时保持完整本地模式，使用 GitHub 登录后异步合并并跨设备恢复。同步失败不破坏本地，退出登录保留本地；全局重置需要输入重置并使用版本墓碑防止旧设备复活。",
+  "features": [
+    {
+      "id": "F-017",
+      "name": "可选 GitHub 登录与本地优先写入",
+      "user_inputs": ["读者可选点击使用 GitHub 登录并同步。", "每次评价仍先写当前浏览器。"],
+      "ui_states": [
+        {"name": "未登录本地模式", "enter_when": "同步已配置但读者未登录。", "sketch": "复习进度\n未登录，进度仅保存在此浏览器\n[使用 GitHub 登录并同步]", "transitions": ["评价卡片 → 进度立即保存在本地并继续复习", "点击登录 → GitHub 授权状态"]},
+        {"name": "GitHub 授权", "enter_when": "读者点击登录。", "sketch": "复习进度\n正在前往 GitHub 登录…", "transitions": ["授权成功并返回 → 正在同步", "取消或失败 → 云端失败，本地继续可用"]},
+        {"name": "已登录同步完成", "enter_when": "云端返回合并快照。", "sketch": "复习进度\n本地与云端进度已同步\n[立即同步] [退出登录]", "transitions": ["继续评价 → 本地立即保存并后台同步", "退出登录 → 未登录本地模式"]}
+      ],
+      "product_state_flow": "未登录时只使用本地进度；选择 GitHub 登录后回到复习页并异步合并；评价始终先本地保存，再尝试云端同步。",
+      "outputs": {"semantic": ["匿名模式完整可用；只提供 GitHub；登录不清除登录前本地进度。"]},
+      "acceptance": ["Given 读者未登录，When 完成评价，Then 本地立即保存且不等待网络。", "Given 同步已配置，When 点击登录并完成 GitHub 授权，Then 回到原复习页并开始后台合并。"]
+    },
+    {
+      "id": "F-018",
+      "name": "原子合并与离线恢复",
+      "user_inputs": ["当前 v3 本地快照和非负重置版本。"],
+      "ui_states": [
+        {"name": "正在同步", "enter_when": "已登录且同步开始。", "sketch": "复习进度\n正在同步，本地操作不受影响\n[立即同步] [退出登录]", "transitions": ["成功 → 已登录同步完成", "断网 → 离线待同步", "请求失败 → 云端失败"]},
+        {"name": "离线待同步", "enter_when": "浏览器离线。", "sketch": "复习进度\n当前离线，本地进度将在联网后同步\n[立即同步] [退出登录]", "transitions": ["继续评价 → 本地持续保存", "恢复联网 → 自动重试"]},
+        {"name": "云端失败", "enter_when": "登录、同步或重置请求失败。", "sketch": "复习进度\n云端暂不可用，本地进度已安全保存\n[立即同步] [退出登录]", "transitions": ["继续评价 → 本地持续保存", "点击立即同步或恢复联网 → 正在同步"]}
+      ],
+      "product_state_flow": "提交本地快照后按卡片 last_review 合并，按日期和卡片取每日历史并集；失败保持待上传，联网后重试。",
+      "outputs": {"semantic": ["卡片按稳定 ID 选择 last_review 较大者；每日任务和完成历史取并集；失败不回滚本地。"]},
+      "acceptance": ["Given 两端修改同一卡片，When 同步，Then last_review 较大的状态胜出。", "Given 读者离线，When 继续评价，Then 本地更新且联网后自动重试。"]
+    },
+    {
+      "id": "F-019",
+      "name": "退出登录与防复活重置",
+      "user_inputs": ["退出登录操作。", "全局重置时严格输入重置。"],
+      "ui_states": [
+        {"name": "全局重置确认", "enter_when": "已登录读者点击重置全部进度。", "sketch": "这会清除所有设备上的复习进度。\n请输入 重置 继续。\n[输入框] [确认] [取消]", "transitions": ["输入不是重置或取消 → 原状态", "输入重置 → 正在重置"]},
+        {"name": "正在重置", "enter_when": "确认值严格等于重置。", "sketch": "复习进度\n正在重置所有设备的进度…", "transitions": ["云端成功 → 全部卡恢复新卡", "云端失败 → 云端失败且本地不清除"]}
+      ],
+      "product_state_flow": "退出登录只停止当前设备同步并保留本地；全局重置先在云端递增版本并删除数据，成功后清空本地；旧版本设备下次同步采用云端空快照。",
+      "outputs": {"semantic": ["退出不删除本地；重置失败不清本地；版本墓碑阻止旧设备复活。"]},
+      "acceptance": ["Given 已登录且有本地进度，When 退出登录，Then 本地进度不变。", "Given 输入重置且云端成功，When 旧设备再次同步，Then 它采用空快照且不能上传旧数据。"]
+    }
+  ],
+  "evidence": ["用户于 2026-08-25 逐项确认 GitHub-only、匿名本地模式、本地优先、按 last_review 合并、每日历史并集、退出保留本地、输入重置执行全局重置和版本墓碑。", "https://supabase.com/docs/guides/auth/social-login/auth-github", "https://supabase.com/docs/guides/database/postgres/row-level-security"]
+}

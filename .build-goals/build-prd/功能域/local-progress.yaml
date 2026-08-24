@@ -3,15 +3,15 @@
   "domain_id": "local-progress",
   "name": "本地进度",
   "status": "confirmed",
-  "confirmed_at": "2026-08-24T00:00:00+08:00",
+  "confirmed_at": "2026-08-25T03:18:52+08:00",
   "dependencies": ["study-review"],
-  "summary": "插件用 ts-fsrs repeat/next 完成四档动态调度，只做 Card 序列化适配；进度和每日打卡快照保存在当前浏览器，过去未完成日期不因补做而改写。",
+  "summary": "插件用 ts-fsrs repeat/next 完成四档动态调度，只做 Card 序列化适配；进度和每日打卡快照总是先保存在当前浏览器，过去未完成日期不因补做而改写，可选跨设备行为由 cloud-sync 负责。",
   "features": [
     {"id": "F-010", "name": "ts-fsrs 动态调度", "user_inputs": ["当前 FSRS Card、评价和时间点。"], "outputs": {"semantic": ["repeat 预览四档，next 提交所选档；关闭 fuzz 保证预测与提交一致。"]}, "forbidden": ["不得保留固定天数阶梯或自行维护近似公式。"], "acceptance": ["Given 当前卡状态，When 选择记得，Then 保存状态与 Good 预测一致。"]},
     {"id": "F-011", "name": "到期判定与队列状态", "user_inputs": ["FSRS due 与浏览器 now。"], "outputs": {"semantic": ["due <= now 的旧卡进入到期队列，未来旧卡不进入。"]}, "acceptance": ["Given due 等于 now，When 建队列，Then 卡片计入待复习。"]},
     {"id": "F-012", "name": "当前浏览器持久化", "user_inputs": ["稳定卡片 ID 和 ts-fsrs 返回 Card。"], "outputs": {"semantic": ["localStorage v3 保存原生 FSRS 字段、lastRating 和每日任务快照；v2 可在不改变旧 due 的前提下迁移。"]}, "acceptance": ["Given 已保存状态，When 刷新，Then due 与全部调度字段不变。"]},
-    {"id": "F-013", "name": "本地边界与重置", "user_inputs": ["读者确认清除本地进度。"], "outputs": {"semantic": ["删除当前浏览器 v2/v3 状态和打卡历史，全部卡恢复新卡；不跨设备同步。"]}, "external_contracts": ["进度与打卡历史作用域：当前浏览器。"], "acceptance": ["Given 当前浏览器有进度，When 确认清除，Then 全部卡恢复新卡、旧 due 消失且打卡历史清空。"]},
+    {"id": "F-013", "name": "未登录边界与本地进度重置", "user_inputs": ["未登录读者确认清除本地进度。"], "outputs": {"semantic": ["删除当前浏览器 v2/v3 状态和打卡历史，全部卡恢复新卡；未登录时不跨设备同步。"]}, "external_contracts": ["未登录时进度与打卡历史作用域：当前浏览器。"], "acceptance": ["Given 未登录且当前浏览器有进度，When 确认清除，Then 全部卡恢复新卡、旧 due 消失且打卡历史清空。"]},
     {"id": "F-016", "name": "每日打卡记录", "user_inputs": ["当日到期任务快照和评价时间。"], "outputs": {"semantic": ["当天全部完成显示绿色渐变圆环与勾；当天有题未完成显示红色渐变圆环；未来或无题日中性；次日补做不改写前日红色记录。"]}, "forbidden": ["不提供补签或历史修改。"], "acceptance": ["Given 当日 28 题全部按时完成，When 月历更新，Then 当日显示绿色圆环与勾。", "Given 前一天未完成，When 次日补做并完成次日队列，Then 前一天保持红色而次日显示绿色。"]}
   ],
-  "evidence": ["用户于 2026-08-24 明确要求使用成熟 ts-fsrs 并保持插件薄。", "用户于 2026-08-24 确认打卡历史仅保存在当前浏览器，过去未完成日期不因次日补做而改为完成。", "https://github.com/open-spaced-repetition/ts-fsrs/blob/main/packages/fsrs/README.md"]
+  "evidence": ["用户于 2026-08-24 明确要求使用成熟 ts-fsrs 并保持插件薄。", "用户于 2026-08-24 确认打卡历史仅保存在当前浏览器，过去未完成日期不因次日补做而改为完成。", "用户于 2026-08-25 确认本地优先并增加可选 GitHub 登录与云端同步。", "https://github.com/open-spaced-repetition/ts-fsrs/blob/main/packages/fsrs/README.md"]
 }

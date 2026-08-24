@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "domain_id": "cloud-sync",
+  "samples": [
+    {
+      "id": "SAMPLE-SYNC-001",
+      "feature_id": "F-017",
+      "kind": "normal",
+      "user_input": {"action": "评价一张卡", "authenticated": false},
+      "starting_state": ["云同步已配置", "当前未登录"],
+      "expected_behavior": ["先写入 localStorage v3", "不等待云端请求", "继续下一张卡"],
+      "expected_output": "页面显示未登录，进度仅保存在此浏览器；刷新后评价结果仍存在。",
+      "output_contract": {"semantic": ["匿名模式拥有完整本地学习闭环"], "exact": ["未登录，进度仅保存在此浏览器"]},
+      "assertions": ["本地写入先完成", "没有匿名云端写入", "队列继续"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-002",
+      "feature_id": "F-017",
+      "kind": "normal",
+      "user_input": {"action": "使用 GitHub 登录并同步"},
+      "starting_state": ["当前浏览器已有本地进度", "GitHub OAuth 可用"],
+      "expected_behavior": ["发起 GitHub OAuth", "回到原复习页", "异步提交本地快照并读取合并结果"],
+      "expected_output": "页面显示本地与云端进度已同步。",
+      "output_contract": {"semantic": ["登录不清除登录前本地进度"], "exact": ["使用 GitHub 登录并同步", "本地与云端进度已同步"]},
+      "assertions": ["提供商为 github", "本地快照参与首次合并", "同步成功状态可见"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-003",
+      "feature_id": "F-018",
+      "kind": "normal",
+      "user_input": {"card_id": "http-404", "local_last_review": 200, "cloud_last_review": 150},
+      "starting_state": ["同一用户两端都有相同稳定 ID"],
+      "expected_behavior": ["数据库事务比较 last_review", "保存并返回时间较大的本地状态"],
+      "expected_output": "http-404 使用 last_review=200 对应的 FSRS 状态。",
+      "output_contract": {"semantic": ["冲突粒度是稳定卡片 ID，不是整份快照覆盖"]},
+      "assertions": ["较新卡片胜出", "其他卡片不受覆盖", "每日历史仍取并集"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-004",
+      "feature_id": "F-018",
+      "kind": "boundary",
+      "user_input": {"network": "offline", "action": "连续评价 3 张卡"},
+      "starting_state": ["读者已登录", "云端暂不可达"],
+      "expected_behavior": ["三次评价都立即保存在本地", "同步元数据保持待上传", "联网事件触发重试"],
+      "expected_output": "当前离线，本地进度将在联网后同步。",
+      "output_contract": {"semantic": ["同步失败不能破坏或回滚本地状态"], "exact": ["当前离线，本地进度将在联网后同步"]},
+      "assertions": ["本地存在 3 条新状态", "复习未中断", "联网后调用同步 RPC"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-005",
+      "feature_id": "F-019",
+      "kind": "normal",
+      "user_input": {"action": "退出登录"},
+      "starting_state": ["读者已登录", "当前浏览器有进度和打卡历史"],
+      "expected_behavior": ["仅退出当前设备会话", "保留 localStorage v3", "回到本地模式"],
+      "expected_output": "进度和打卡历史不变；页面显示未登录。",
+      "output_contract": {"semantic": ["退出登录不等于删除数据"]},
+      "assertions": ["本地卡片数量不变", "本地日期历史不变", "会话已移除"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-006",
+      "feature_id": "F-019",
+      "kind": "boundary",
+      "user_input": {"action": "重置全部进度", "typed_confirmation": "重置"},
+      "starting_state": ["两台设备已同步", "设备 A 重置版本为 0", "设备 B 离线并保留旧快照"],
+      "expected_behavior": ["设备 A 调用事务递增版本并删除云端记录", "成功后清空 A 本地", "B 上线后发现版本落后并采用云端空快照"],
+      "expected_output": "两台设备最终都没有卡片进度和打卡历史。",
+      "output_contract": {"semantic": ["重置版本是防止旧设备复活数据的墓碑"], "exact": ["重置全部进度", "重置"]},
+      "assertions": ["重置版本递增", "云端记录为空", "旧设备没有重新上传旧卡"],
+      "sensitive_data": "none"
+    }
+  ]
+}
