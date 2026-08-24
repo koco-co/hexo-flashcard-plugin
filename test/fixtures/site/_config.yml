@@ -5,4 +5,3 @@ permalink: :title/
 theme: fixture
 flashcard:
   path: learn-topic
-  title: 学习中心

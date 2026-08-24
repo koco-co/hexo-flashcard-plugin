@@ -46,6 +46,8 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.doesNotMatch(postHtml, /{%\s*flashcard/);
 
   assert.match(learningHtml, /data-hfc-app/);
+  assert.match(learningHtml, /<title>复习<\/title>/);
+  assert.match(learningHtml, /<h1>复习<\/h1>/);
   assert.match(learningHtml, /"id":"http-404"/);
   assert.match(learningHtml, /"id":"http-cache"/);
   assert.match(learningHtml, /"id":"http-success"/);
