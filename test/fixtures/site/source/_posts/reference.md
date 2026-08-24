@@ -9,7 +9,7 @@ description: Integration fixture for cross-article flashcard references.
 flashcard_deck: HTTP 基础
 ---
 
-{% flashcard basic id:http-method tags:"请求方法" %}
+{% flashcard basic id:http-method tags:"请求方法" priority:2 %}
 --- question
 HTTP GET 方法通常用于什么？
 --- answer

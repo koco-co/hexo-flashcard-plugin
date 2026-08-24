@@ -32,15 +32,23 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   const css = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.css'), 'utf8');
   const js = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'flashcard.js'), 'utf8');
   const fsrs = fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'ts-fsrs.umd.js'), 'utf8');
+  const cardIndex = JSON.parse(fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'cards', 'index.json'), 'utf8'));
 
   assert.match(postHtml, /data-hfc-inline/);
   assert.match(postHtml, /复习本篇 · 3 张卡片/);
+  assert.match(postHtml, /data-hfc-article-count="3"/);
+  assert.match(postHtml, /aria-label="复习本篇 · 3 张卡片"/);
+  assert.match(postHtml, /fas fa-graduation-cap hfc-review-icon/);
+  assert.match(postHtml, /hfc-review-label">复习</);
   assert.match(postHtml, /flashcard-assets\/flashcard\.css/);
   assert.match(postHtml, /flashcard-assets\/ts-fsrs\.umd\.js/);
   assert.match(postHtml, /flashcard-assets\/flashcard\.js/);
   assert.match(postHtml, /Q01/);
   assert.match(postHtml, /#状态码/);
-  assert.match(postHtml, /填空/);
+  assert.match(postHtml, /hfc-priority--1[^>]*href="\/learn-topic\/\?priority=1"[^>]*>高频<\/a>/);
+  assert.match(postHtml, /hfc-priority--2[^>]*>中频<\/a>/);
+  assert.match(postHtml, /hfc-priority--3[^>]*>低频<\/a>/);
+  assert.doesNotMatch(postHtml, /class="hfc-type"/);
   assert.match(postHtml, /问题:/);
   assert.match(postHtml, /回答：/);
   assert.match(postHtml, /解析：/);
@@ -54,15 +62,26 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.doesNotMatch(referenceHtml, /{%\s*flashcard_ref/);
 
   assert.match(learningHtml, /data-hfc-app/);
+  assert.match(learningHtml, /data-hfc-plan/);
   assert.match(learningHtml, /<title>复习<\/title>/);
   assert.match(learningHtml, /<h1>复习<\/h1>/);
-  assert.match(learningHtml, /"id":"http-404"/);
-  assert.match(learningHtml, /"id":"http-cache"/);
-  assert.match(learningHtml, /"id":"http-success"/);
-  assert.match(learningHtml, /"id":"http-method"/);
-  const cardData = JSON.parse(learningHtml.match(/<script id="hfc-card-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
-  assert.equal(cardData.length, 4);
-  assert.deepEqual(cardData.find((card) => card.id === 'http-404').articles.map((article) => article.articlePath), ['demo/', 'reference/']);
+  assert.match(learningHtml, /"cardIndexUrl":"\/flashcard-assets\/cards\/index\.json"/);
+  assert.doesNotMatch(learningHtml, /hfc-card-data/);
+  assert.doesNotMatch(learningHtml, /HTTP 404 表示什么/);
+  assert.doesNotMatch(learningHtml, /服务器没有找到目标资源/);
+  assert.equal(cardIndex.length, 4);
+  assert.deepEqual(cardIndex.map((card) => card.id).sort(), ['http-404', 'http-cache', 'http-method', 'http-success']);
+  assert.deepEqual(Object.fromEntries(cardIndex.map((card) => [card.id, card.priority])), {
+    'http-404': 1,
+    'http-cache': 2,
+    'http-method': 2,
+    'http-success': 3
+  });
+  assert.deepEqual(cardIndex.find((card) => card.id === 'http-404').articles.map((article) => article.articlePath), ['demo/', 'reference/']);
+  assert.ok(cardIndex.every((card) => /^[0-9]{2}$/.test(card.shard)));
+  assert.ok(cardIndex.every((card) => !Object.hasOwn(card, 'questionHtml') && !Object.hasOwn(card, 'answerHtml') && !Object.hasOwn(card, 'explanationHtml')));
+  const shardCards = cardIndex.flatMap((entry) => JSON.parse(fs.readFileSync(path.join(siteRoot, 'public', 'flashcard-assets', 'cards', `${entry.shard}.json`), 'utf8')));
+  assert.ok(shardCards.some((card) => card.id === 'http-404' && card.questionHtml && card.answerHtml && card.explanationHtml));
   assert.doesNotMatch(learningHtml, /1、3、7、14、30、60、120 天/);
   assert.match(css, /\.hfc-rating__grid/);
   assert.match(css, /grid-template-columns:\s*4\.2rem minmax\(0, 1fr\)/);
@@ -77,12 +96,46 @@ test('generates article previews, CTA, learning page, and assets in a real Hexo 
   assert.match(css, /\.hfc-question\s*{[^}]*display:\s*flex;[^}]*justify-content:\s*center;/s);
   assert.match(css, /\.hfc-options\s*{[^}]*width:\s*100%;[^}]*margin:\s*18px 0 0;/s);
   assert.match(css, /\.hfc-options > div > :last-child\s*{[^}]*margin:\s*0\s*!important;/s);
+  assert.match(css, /\.hfc-number\s*{[^}]*font-size:\s*1rem;[^}]*font-weight:\s*900;/s);
+  assert.match(css, /\.hfc-priority--1\s*{[^}]*linear-gradient\(135deg, #ff7a7a, #ff4757\)/s);
+  assert.match(css, /\.hfc-priority--2\s*{[^}]*linear-gradient\(135deg, #ffe08a, #f3b43f\)/s);
+  assert.match(css, /\.hfc-priority--3\s*{[^}]*linear-gradient\(135deg, #68dd9a, #2fbd70\)/s);
+  assert.match(css, /\.hfc-session\s*{[^}]*border-radius:\s*28px;/s);
+  assert.match(css, /\.hfc-session-progress span\s*{[^}]*width:\s*var\(--hfc-session-progress, 0%\);/s);
+  assert.match(css, /\.hfc-session-metrics\s*{/);
+  assert.match(css, /\.hfc-session-metric--done\s*{[^}]*#55a878/s);
+  assert.match(css, /\.hfc-calendar-grid\s*{[^}]*grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\);/s);
+  assert.match(css, /\.hfc-calendar-day\.is-complete \.hfc-calendar-ring\s*{[^}]*#42c98b[^}]*#8adf76/s);
+  assert.match(css, /\.hfc-calendar-day\.is-missed \.hfc-calendar-ring\s*{[^}]*#ff6b72[^}]*#ef8a5d/s);
+  assert.match(css, /\.hfc-drawer__panel\s*{[^}]*width:\s*min\(92vw, 520px\);/s);
+  assert.match(css, /\.hfc-drawer-question\s*{[^}]*overflow-wrap:\s*anywhere;/s);
+  assert.match(css, /@keyframes hfc-memory-orbit/);
+  assert.match(css, /\.post-reward > \.hfc-article-cta--reward/);
+  assert.match(css, /\.post-reward\.hfc-review-hovering > \.reward-main\s*{[^}]*display:\s*none\s*!important;/s);
+  assert.match(css, /@keyframes hfc-review-icon-swing/);
   assert.match(css, /\.hfc-flip\.is-flipped/);
   assert.match(css, /--default-bg-color/);
+  assert.match(js, /hexo-flashcard-plugin:v3/);
   assert.match(js, /hexo-flashcard-plugin:v2/);
   assert.match(js, /这张卡记得如何？/);
-  assert.match(js, /开始学习新卡/);
+  assert.match(js, />开始<\/button>/);
+  assert.doesNotMatch(js, /开始学习新卡/);
+  assert.match(js, /hfc-session--empty/);
+  assert.match(js, /hfc-session-progress/);
+  assert.match(js, /DRAWER_BATCH_SIZE = 20/);
+  assert.match(js, /const PRIORITY_LABELS = \{ 1: '高频', 2: '中频', 3: '低频' \}/);
+  assert.match(js, /params\.get\('priority'\)/);
+  assert.match(js, /left\.priority - right\.priority/);
+  assert.match(js, /progress\.cards\[left\.id\]\.due - progress\.cards\[right\.id\]\.due/);
+  assert.match(js, /function loadCardContent/);
+  assert.match(js, /function renderCalendar/);
+  assert.match(js, /function openDrawer/);
+  assert.match(js, /复习计划/);
+  assert.match(js, /完成一次复习后，这里会显示后续安排/);
+  assert.match(js, /继续加载 20 题/);
+  assert.match(js, /placeArticleReviewActions/);
+  assert.match(js, /hfc-review-hovering/);
   assert.match(js, /record\(card, button\.dataset\.hfcRate, reviewedAt\)/);
-  assert.match(js, /scheduler\.next\(deserializeCard\(progress\.cards\[card\.id\], reviewedAt\), new Date\(reviewedAt\), RATING_VALUES\[rating\]\)/);
+  assert.match(js, /scheduler\.next\(deserializeCard\(previous, reviewedAt\), new Date\(reviewedAt\), RATING_VALUES\[rating\]\)/);
   assert.match(fsrs, /global\.FSRS/);
 });

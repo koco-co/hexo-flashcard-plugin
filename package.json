@@ -1,6 +1,6 @@
 {
   "name": "hexo-flashcard-plugin",
-  "version": "0.3.1",
+  "version": "0.7.0",
   "description": "Lightweight spaced-repetition flashcards for Hexo posts.",
   "main": "index.js",
   "type": "commonjs",

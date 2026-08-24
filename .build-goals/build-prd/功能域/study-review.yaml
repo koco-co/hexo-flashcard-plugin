@@ -5,12 +5,13 @@
   "status": "confirmed",
   "confirmed_at": "2026-08-24T00:00:00+08:00",
   "dependencies": ["card-build"],
-  "summary": "复习页先筛选后构建到期队列快照，正面只显示问题，翻面后显示回答、解析和四档动态评价；评价后出队并自动推进。",
+  "summary": "复习页先筛选后构建到期队列快照，评价后单向推进，并将已保存的 due 汇总为月历；主页不平铺问题，点击日期后每批按需加载 20 题。",
   "features": [
     {"id": "F-006", "name": "正反面学习卡", "user_inputs": ["读者点击卡片空白区域或按 Enter/Space。"], "outputs": {"semantic": ["正面只显示问题和点击查看答案；背面显示问题:、回答：、解析：，标签与内容保持同行。"]}, "acceptance": ["Given 正面显示，When 翻面，Then 答案、解析和评价区同时出现。", "Given 复习页背面显示，When 呈现三个内容区，Then 标签与对应内容保持同行。"]},
     {"id": "F-007", "name": "四档动态评价", "user_inputs": ["读者选择忘记、模糊、记得或简单。"], "outputs": {"semantic": ["四档均显示 ts-fsrs 动态预测，所有卡型统一自评。"]}, "acceptance": ["Given 背面显示，When 查看评价区，Then 恰好显示四档及动态间隔。"]},
     {"id": "F-008", "name": "严格单向会话", "user_inputs": ["读者评价当前卡。"], "outputs": {"semantic": ["评价后出队、自动进入下一张，进度只增只减，完成后显示确认文案和只读统计。"]}, "forbidden": ["不得提供上一张、下一张、位置拖动或重新评价。"], "acceptance": ["Given 已完成 3 待复习 8，When 评价当前卡，Then 显示已完成 4 待复习 7 并自动推进。"]},
-    {"id": "F-009", "name": "到期旧卡、新卡与筛选", "user_inputs": ["读者通过 article/deck/tag 进入，或在空状态启动新卡。"], "outputs": {"semantic": ["先筛选再建队列；到期旧卡与新卡分开计数；会话快照不可变。"]}, "acceptance": ["Given 到期 0 新卡 8，When 打开页面，Then 显示无到期状态和开始学习新卡 8。"]}
+    {"id": "F-009", "name": "到期旧卡、新卡与筛选", "user_inputs": ["读者通过 article/deck/tag 进入，或在空状态点击开始。"], "outputs": {"semantic": ["先筛选再建队列；到期旧卡与新卡分开计数；会话快照不可变；复习页通过状态头、真实进度线、图标光晕和卡片层次形成轻量学习仪表盘，已完成与待复习使用无厚重胶囊背景的双指标。"]}, "acceptance": ["Given 到期 0 新卡 8，When 打开页面，Then 显示无到期状态和开始。", "Given 页面处于无到期、学习中或完成状态，When 在桌面、移动端、浅色或深色主题显示，Then 轻量学习仪表盘层次一致、双指标清晰且无横向溢出。"]},
+    {"id": "F-015", "name": "月历复习计划", "user_inputs": ["读者在当前浏览器对卡片完成评价、切换月份或点击日期。"], "outputs": {"semantic": ["月历只显示每日问题数量和打卡状态；点击日期后每批最多加载 20 题；新卡不进入计划；评价后立即重排；复习页 HTML 不嵌入全量卡片正文。"]}, "acceptance": ["Given 已复习卡的 due 分布在两个日期，When 打开页面，Then 月历在对应日期显示数量且不平铺问题。", "Given 某日有 1,248 题，When 点击该日期，Then 抽屉首批最多显示 20 题。", "Given 当前卡完成评价，When 新 due 保存，Then 月历无需刷新即更新。"]}
   ],
-  "evidence": ["用户于 2026-08-24 明确确认 Claude 给出的严格队列状态机与全部核心文案。", "https://docs.ankiweb.net/studying.html", "https://help.quizlet.com/hc/en-us/articles/360030988091-Studying-with-Flashcards"]
+  "evidence": ["用户于 2026-08-24 明确确认 Claude 给出的严格队列状态机与核心状态文案。", "用户于 2026-08-24 确认复习页采用轻量学习仪表盘视觉。", "用户于 2026-08-24 确认计划只根据复习问答结果展示未来日期，不安排新卡，并将新卡启动按钮改为开始。", "用户于 2026-08-24 确认用月历取代平铺问题，点击日期后每批按需加载 20 题。", "https://docs.ankiweb.net/studying.html", "https://help.quizlet.com/hc/en-us/articles/360030988091-Studying-with-Flashcards"]
 }

@@ -54,12 +54,36 @@
       "id": "SAMPLE-STUDY-005",
       "feature_id": "F-009",
       "kind": "normal",
-      "user_input": {"filter": "tag=状态码", "due_old_cards": 0, "new_cards": 8, "action": "开始学习新卡 8"},
+      "user_input": {"filter": "tag=状态码", "due_old_cards": 0, "new_cards": 8, "action": "开始"},
       "starting_state": ["筛选已先应用", "到期旧卡和新卡是独立集合"],
-      "expected_behavior": ["显示无到期卡状态", "不把 0 与 8 合并成总数", "点击后建立 8 张新卡快照"],
-      "expected_output": "待复习 0；暂无到期卡片；你可以去学习新卡，或稍后再来；开始学习新卡 8。",
-      "output_contract": {"semantic": ["到期旧卡与新卡分开建队列和计数"], "exact": ["待复习 0", "暂无到期卡片", "你可以去学习新卡，或稍后再来", "开始学习新卡 8"]},
-      "assertions": ["新卡数为 8", "到期旧卡数为 0", "会话只包含 #状态码 新卡"],
+      "expected_behavior": ["显示轻量学习仪表盘与无到期卡状态", "用静态状态进度、图标光晕和卡片层次增强页面", "用无厚重胶囊背景的双指标显示会话进度", "不把 0 与 8 合并成总数", "点击后建立 8 张新卡快照"],
+      "expected_output": "待复习 0；暂无到期卡片；你可以去学习新卡，或稍后再来；开始。",
+      "output_contract": {"semantic": ["到期旧卡与新卡分开建队列和计数", "复习页使用状态头、真实进度线、图标光晕和卡片层次形成轻量学习仪表盘"], "exact": ["待复习 0", "暂无到期卡片", "你可以去学习新卡，或稍后再来", "开始"]},
+      "assertions": ["新卡数为 8", "到期旧卡数为 0", "会话只包含 #状态码 新卡", "桌面与移动端无横向溢出", "浅色与深色模式下状态层次清晰", "按钮可见文案只有开始"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-STUDY-006",
+      "feature_id": "F-015",
+      "kind": "normal",
+      "user_input": {"card_id": "locator-priority", "rating": "记得", "saved_due": "2026-08-26T09:30:00+08:00"},
+      "starting_state": ["当前卡已翻面", "月历尚未在 8 月 26 日计入该卡"],
+      "expected_behavior": ["提交记得评价", "保存 ts-fsrs 返回的 due", "无需刷新即更新浏览器本地月历日期数量", "主页不渲染问题正文"],
+      "expected_output": "复习计划；下一次复习：8月26日 09:30；未来共 1 题；26日显示 1 题。",
+      "output_contract": {"semantic": ["计划只是已保存 FSRS 结果的月历可视化", "新卡不进入计划", "计划与当前 article、deck 或 tag 筛选范围一致"], "exact": ["复习计划", "下一次复习", "未来共 1 题"]},
+      "assertions": ["月历日期数量来自保存的 due", "主页不显示问题、回答或解析", "评价后无需刷新", "新卡不进入月历"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-STUDY-007",
+      "feature_id": "F-015",
+      "kind": "boundary",
+      "user_input": {"date": "2026-08-29", "scheduled_questions": 1248, "action": "点击日期后继续加载一次"},
+      "starting_state": ["复习页 HTML 没有嵌入全量卡片正文", "月历仅显示 29 日有 1,248 题"],
+      "expected_behavior": ["点击日期后按需读取卡片内容分片", "首批最多显示 20 题", "点击继续加载后最多显示 40 题"],
+      "expected_output": "8 月 29 日 · 1,248 题；已加载 40 / 1,248。",
+      "output_contract": {"semantic": ["月历不平铺问题", "抽屉每批最多加载 20 题"], "exact": ["继续加载 20 题"]},
+      "assertions": ["打开抽屉前问题 DOM 为 0", "首批问题 DOM 不超过 20", "第二批后问题 DOM 不超过 40", "不显示回答和解析"],
       "sensitive_data": "none"
     }
   ]

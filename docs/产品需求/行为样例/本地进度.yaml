@@ -43,7 +43,7 @@
       "feature_id": "F-012",
       "kind": "normal",
       "user_input": {"card_id": "http-404", "action": "刷新学习页面"},
-      "starting_state": ["localStorage v2 已保存 due、stability、difficulty、reps、lapses、state 和 last_review"],
+      "starting_state": ["localStorage v3 已保存 due、stability、difficulty、reps、lapses、state 和 last_review"],
       "expected_behavior": ["按稳定 ID 读取 JSON", "把日期时间戳还原为 Date", "恢复完整 FSRS Card"],
       "expected_output": "http-404 的 due 和全部 FSRS 数值字段与刷新前一致。",
       "output_contract": {"semantic": ["同一浏览器刷新不能丢失或重算已提交状态"]},
@@ -56,10 +56,10 @@
       "kind": "normal",
       "user_input": {"action": "清除本地进度", "confirmed": true},
       "starting_state": ["当前浏览器有 25 张卡进度", "其中 5 张到期"],
-      "expected_behavior": ["显示固定确认文案", "确认后删除 v2 进度", "重新计算新卡与到期队列"],
-      "expected_output": "25 张卡恢复为新卡；到期旧卡为 0。",
+      "expected_behavior": ["显示固定确认文案", "确认后删除 v2/v3 进度和打卡历史", "重新计算新卡与到期队列"],
+      "expected_output": "25 张卡恢复为新卡；到期旧卡为 0；月历打卡历史清空。",
       "output_contract": {"semantic": ["确认清除后当前浏览器全部卡片恢复新卡状态"], "exact": ["清除后无法恢复当前浏览器中的学习进度。"]},
-      "assertions": ["v2 存储键被删除", "旧 due 不可恢复", "新卡数为 25"],
+      "assertions": ["v2/v3 存储键被删除", "旧 due 不可恢复", "打卡历史为空", "新卡数为 25"],
       "sensitive_data": "none"
     },
     {
@@ -84,6 +84,30 @@
       "expected_output": "http-404 已到期并进入今日复习队列。",
       "output_contract": {"semantic": ["到期比较包含时间相等边界"]},
       "assertions": ["卡片在到期队列", "待复习数量增加 1"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-008",
+      "feature_id": "F-016",
+      "kind": "normal",
+      "user_input": {"date": "2026-08-24", "scheduled": 28, "completed": 28},
+      "starting_state": ["当天任务快照已记录 28 题", "每道题都在当天完成评价"],
+      "expected_behavior": ["计算当日快照全部完成", "保存本地打卡结果", "月历立即更新日期状态"],
+      "expected_output": "8 月 24 日显示绿色渐变圆环和勾。",
+      "output_contract": {"semantic": ["绿色只表示当天全部按时完成", "记录仅属于当前浏览器"]},
+      "assertions": ["日期状态为完成", "圆环为绿色渐变", "显示勾"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-009",
+      "feature_id": "F-016",
+      "kind": "boundary",
+      "user_input": {"missed_date": "2026-08-24", "catch_up_date": "2026-08-25", "action": "在次日补做逾期题并完成当日队列"},
+      "starting_state": ["8 月 24 日有未完成任务", "8 月 24 日已结束"],
+      "expected_behavior": ["保留 8 月 24 日未完成快照", "把补做任务计入 8 月 25 日当日队列", "完成 25 日打卡但不补签 24 日"],
+      "expected_output": "8 月 24 日保持红色圆环；8 月 25 日显示绿色圆环。",
+      "output_contract": {"semantic": ["过去未完成记录不因后续补做而改写"]},
+      "assertions": ["24 日仍为未完成", "25 日为完成", "没有补签操作"],
       "sensitive_data": "none"
     }
   ]

@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "package_id": "hexo-flashcard-plugin",
-  "package_version": "2.3.2",
+  "package_version": "2.6.0",
   "status": "confirmed",
   "package_type": "full",
   "generated_at": "2026-08-24",
   "source": {
     "project": "hexo-flashcard-plugin-product-idea",
-    "revision": "confirmed-2026-08-24-soft-gradient-card"
+    "revision": "confirmed-2026-08-24-calendar-checkins"
   },
   "domains": [
     {
@@ -37,13 +37,13 @@
   ],
   "external_dependencies": [],
   "files": [
-    {"path": "PRD需求文档.md", "sha256": "4bf141d984b8e4b600ba3ef547b5028c04adbea9a7287371c2f66123f68ca897"},
-    {"path": "功能域/卡片声明与构建.md", "sha256": "fefd6bcfadcd64103f4a82f211046a9546e83d31c5904d5a45c0556f818382f1"},
-    {"path": "功能域/学习与复习.md", "sha256": "3b5bed990e8126121275dbe6cab9ad6595068ce827e197c79ac12924610a28c3"},
-    {"path": "功能域/本地进度.md", "sha256": "2e51dd45af1e6d08c91522c3e6dfb4ca8ef5287cdf81ef9806a4b39c9dcffd22"},
-    {"path": "行为样例/产品行为样例集.yaml", "sha256": "ce337ae3e2138e7037e236a6cbd0d2cac4c59ac5513f1f9900363148e68d1bb1"},
-    {"path": "行为样例/卡片声明与构建.yaml", "sha256": "0c504c62adb86cd28477d9e50c16a611619bcfd7a5fbd1cbe5e4e6806d405ed7"},
-    {"path": "行为样例/学习与复习.yaml", "sha256": "0b62df8dcc1a10b9e860782d8cc6b0eea5f5fa41f462169c968121c8a631516f"},
-    {"path": "行为样例/本地进度.yaml", "sha256": "c6e186c77d1023207b03edc87164979bf6508c9e65937040d72af6fbe671a029"}
+    {"path": "PRD需求文档.md", "sha256": "6e53f8c4255c4ac3825712fdab9b90fdf440db334eb74ca703569455aec1b5fe"},
+    {"path": "功能域/卡片声明与构建.md", "sha256": "59582379ea25b624e9161eaf882ed94daa43c50b938f0e2cba8baa0cfe9cc229"},
+    {"path": "功能域/学习与复习.md", "sha256": "66e7f192110a8254f4120c39c658e628cd40f1cb93f617ed3421f06640f15078"},
+    {"path": "功能域/本地进度.md", "sha256": "61c06192782b4732d45f6eafd150a2e92acdcd64184551b81c74b48602296e7f"},
+    {"path": "行为样例/产品行为样例集.yaml", "sha256": "cc787135ca8aa4dd65737abae51d073e2898425582b7e124874bd4d715107109"},
+    {"path": "行为样例/卡片声明与构建.yaml", "sha256": "da5636705d43fabd0002ea0e878566f0b1763dc677347aa8c21b88cede557744"},
+    {"path": "行为样例/学习与复习.yaml", "sha256": "dc8a996767dea6e85ffe77783a519d2c6936840fbb81f2b34ab458c324aff8d8"},
+    {"path": "行为样例/本地进度.yaml", "sha256": "93f0d34924c6175981ddd250d1f258e4a64a53158891800d23a698d1256c6179"}
   ]
 }
