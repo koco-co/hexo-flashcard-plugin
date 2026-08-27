@@ -81,7 +81,7 @@
       "user_input": {"card_id": "http-404", "due": "2026-08-24T10:00:00+08:00", "now": "2026-08-24T10:00:00+08:00"},
       "starting_state": ["卡片已有本地 FSRS Card", "due 恰好等于 now"],
       "expected_behavior": ["使用 due <= now 判定", "把卡片加入到期队列"],
-      "expected_output": "http-404 已到期并进入今日复习队列。",
+      "expected_output": "http-404 已到期并进入今日练习队列。",
       "output_contract": {"semantic": ["到期比较包含时间相等边界"]},
       "assertions": ["卡片在到期队列", "待复习数量增加 1"],
       "sensitive_data": "none"
@@ -108,6 +108,18 @@
       "expected_output": "8 月 24 日保持红色圆环；8 月 25 日显示绿色圆环。",
       "output_contract": {"semantic": ["过去未完成记录不因后续补做而改写"]},
       "assertions": ["24 日仍为未完成", "25 日为完成", "没有补签操作"],
+      "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-PROGRESS-010",
+      "feature_id": "F-011",
+      "kind": "boundary",
+      "user_input": {"action": "开始新卡练习", "daily_started": 50},
+      "starting_state": ["当天 newCardDays 已记录 50 个稳定卡片 ID", "当前范围仍有未复习卡"],
+      "expected_behavior": ["继续已开始但未完成的卡", "不加入新的未开始卡", "不创建每日打卡任务"],
+      "expected_output": "新卡练习不超过当天首次开始上限 50，且不改变今日练习的打卡状态。",
+      "output_contract": {"semantic": ["额度按 Asia/Shanghai 自然日计算", "新卡练习与今日练习任务分离"]},
+      "assertions": ["首次开始 ID 去重", "未开始新卡被额度拦截", "已开始卡可继续", "每日任务为空或保持不变"],
       "sensitive_data": "none"
     }
   ]

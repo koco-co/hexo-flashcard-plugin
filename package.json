@@ -15,7 +15,7 @@
     "test": "node --test test/*.test.js",
     "test:unit": "node --test test/parser.test.js test/scheduler.test.js",
     "test:integration": "node --test test/hexo-integration.test.js",
-    "check": "node --check index.js && node --check lib/*.js && node --check assets/flashcard.js && node --check assets/flashcard-sync.js && npm test"
+    "check": "node --check index.js && node --check lib/*.js && node --check assets/flashcard-queue.js && node --check assets/flashcard.js && node --check assets/flashcard-sync.js && npm test"
   },
   "engines": {
     "node": ">=20.19.0"

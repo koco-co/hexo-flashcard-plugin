@@ -73,6 +73,18 @@
       "output_contract": {"semantic": ["重置版本是防止旧设备复活数据的墓碑"], "exact": ["重置全部进度", "重置"]},
       "assertions": ["重置版本递增", "云端记录为空", "旧设备没有重新上传旧卡"],
       "sensitive_data": "none"
+    },
+    {
+      "id": "SAMPLE-SYNC-007",
+      "feature_id": "F-018",
+      "kind": "boundary",
+      "user_input": {"action": "两台设备开始新卡", "daily_started": 50},
+      "starting_state": ["两台设备使用同一 GitHub 账号", "同一 Asia/Shanghai 日期合计已开始 50 张新卡"],
+      "expected_behavior": ["按稳定卡片 ID 合并首次开始记录", "服务端拒绝第 51 张未开始卡", "返回云端记录作为两台设备的额度基准"],
+      "expected_output": "两台设备当天合计最多 50 张新卡；已开始但未完成的卡仍可继续。",
+      "output_contract": {"semantic": ["额度由服务端事务约束", "新卡开始记录与每日打卡任务分离"]},
+      "assertions": ["新卡 ID 去重", "云端记录不超过 50", "第 51 张不写入", "同步后本地采用云端额度记录"],
+      "sensitive_data": "none"
     }
   ]
 }

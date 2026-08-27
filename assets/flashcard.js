@@ -4,6 +4,8 @@
   const STORAGE_KEY = 'hexo-flashcard-plugin:v3';
   const LEGACY_STORAGE_KEY = 'hexo-flashcard-plugin:v2';
   const DRAWER_BATCH_SIZE = 20;
+  const TIME_ZONE = 'Asia/Shanghai';
+  const NEW_CARD_DAILY_LIMIT = 50;
   const RATING_NAMES = ['again', 'hard', 'good', 'easy'];
   const RATING_LABELS = { again: '忘记', hard: '模糊', good: '记得', easy: '简单' };
   const RATING_VALUES = { again: 1, hard: 2, good: 3, easy: 4 };
@@ -23,18 +25,18 @@
   }
 
   function emptyProgress() {
-    return { version: 3, cards: {}, days: {} };
+    return { version: 3, cards: {}, days: {}, newCardDays: {} };
   }
 
   function loadProgress() {
     try {
       const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       if (current?.version === 3 && current.cards) {
-        return { version: 3, cards: current.cards || {}, days: current.days || {} };
+        return { version: 3, cards: current.cards || {}, days: current.days || {}, newCardDays: current.newCardDays || {} };
       }
       const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || '{}');
       if (legacy?.version === 2 && legacy.cards) {
-        const migrated = { version: 3, cards: legacy.cards, days: {} };
+        const migrated = { version: 3, cards: legacy.cards, days: {}, newCardDays: {} };
         saveProgress(migrated);
         return migrated;
       }
@@ -86,8 +88,8 @@
     if (meta) loadCardContent(meta, config).catch(() => {});
   }
 
-  function serializeCard(card, lastRating) {
-    return {
+  function serializeCard(card, lastRating, learningMode) {
+    const serialized = {
       due: card.due.getTime(),
       stability: card.stability,
       difficulty: card.difficulty,
@@ -100,6 +102,8 @@
       last_review: card.last_review ? card.last_review.getTime() : null,
       lastRating
     };
+    if (learningMode) serialized.learningMode = learningMode;
+    return serialized;
   }
 
   function deserializeCard(progress, now) {
@@ -125,23 +129,25 @@
   }
 
   function localDateKey(timestamp) {
+    if (window.HFC_QUEUE?.dateKey) return window.HFC_QUEUE.dateKey(timestamp, TIME_ZONE);
     const date = new Date(timestamp);
     return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
   }
 
   function dateFromKey(key) {
     const [year, month, day] = key.split('-').map(Number);
-    return new Date(year, month - 1, day, 12);
+    return new Date(Date.UTC(year, month - 1, day, 12));
   }
 
   function formatClock(timestamp) {
-    return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(timestamp));
+    return new Intl.DateTimeFormat('zh-CN', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(timestamp));
   }
 
   function formatDrawerDate(key) {
     const date = dateFromKey(key);
-    const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date);
-    return `${date.getMonth() + 1} 月 ${date.getDate()} 日 · ${weekday}`;
+    const formatted = new Intl.DateTimeFormat('zh-CN', { timeZone: TIME_ZONE, month: 'numeric', day: 'numeric', weekday: 'short' }).formatToParts(date);
+    const parts = Object.fromEntries(formatted.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+    return `${parts.month} 月 ${parts.day} 日 · ${parts.weekday}`;
   }
 
   function isDue(progress, now = Date.now()) {
@@ -229,11 +235,18 @@
     return day.cards[cardId];
   }
 
+  function isNewLearningCard(state) {
+    return window.HFC_QUEUE?.isNewLearning
+      ? window.HFC_QUEUE.isNewLearning(state)
+      : Number(state?.state) === 1 && state?.learningMode === 'new';
+  }
+
   function reconcileDailyTasks(progress, cards, now = Date.now()) {
     const before = JSON.stringify(progress.days);
     const today = localDateKey(now);
     cards.forEach((card) => {
       const state = progress.cards[card.id];
+      if (isNewLearningCard(state)) return;
       if (!Number.isFinite(state?.due)) return;
       const dueKey = localDateKey(state.due);
       if (dueKey > today) return;
@@ -245,12 +258,13 @@
   }
 
   async function createApp(root) {
-    if (root.dataset.hfcReady === 'true' || !window.FSRS) return;
+    if (root.dataset.hfcReady === 'true' || !window.FSRS || !window.HFC_QUEUE) return;
     root.dataset.hfcReady = 'true';
     const stage = root.querySelector('[data-hfc-stage]');
     const plan = root.querySelector('[data-hfc-plan]');
     const live = root.querySelector('[data-hfc-live]');
     const config = parseJsonScript('hfc-config-data', { root: '/', learningPath: 'learn-topic', assetBase: '/flashcard-assets', cardIndexUrl: '/flashcard-assets/cards/index.json', sync: { enabled: false } });
+    const queueApi = window.HFC_QUEUE;
     const params = new URLSearchParams(location.search);
     const article = params.get('article');
     const deck = params.get('deck');
@@ -263,9 +277,10 @@
     let scopedCards = [];
     let scopedIds = new Set();
     let queue = [];
+    let sessionMode = 'review';
     let completed = 0;
     let ratings = { again: 0, hard: 0, good: 0, easy: 0 };
-    let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    let calendarMonth = dateFromKey(localDateKey(Date.now()));
     let drawerState = null;
     let renderToken = 0;
     let syncController = null;
@@ -307,12 +322,18 @@
       if (syncNow) syncNow.hidden = !state.authenticated;
       if (logout) logout.hidden = !state.authenticated;
       panel.dataset.hfcSyncState = state.status;
+      panel.dataset.hfcAvatarUrl = state.avatarUrl || '';
       updateResetLabels(state.authenticated);
     }
 
     function refreshFromProgress() {
-      if (root.querySelector('[data-hfc-session-state="reviewing"]')) {
+      const sessionState = root.querySelector('[data-hfc-session-state]')?.dataset.hfcSessionState;
+      if (sessionState === 'reviewing' || sessionState === 'loading') {
         renderCalendar();
+        return;
+      }
+      if (sessionMode !== 'review') {
+        renderEmpty(sessionMode);
         return;
       }
       const due = dueCards();
@@ -339,22 +360,49 @@
       });
     }
 
-    function newCards() {
-      return scopedCards
-        .filter((card) => !progress.cards[card.id])
-        .sort((left, right) => left.priority - right.priority);
+    function newCardCandidates(now = Date.now()) {
+      return queueApi.candidates(scopedCards, progress, now, NEW_CARD_DAILY_LIMIT);
     }
 
-    function dueCards(now = Date.now()) {
-      return scopedCards
-        .filter((card) => isDue(progress.cards[card.id], now))
-        .sort((left, right) => progress.cards[left.id].due - progress.cards[right.id].due);
+    function newCardSummary(now = Date.now()) {
+      return queueApi.dailyNewCardSummary(scopedCards, progress, now, NEW_CARD_DAILY_LIMIT);
+    }
+
+    function newCardCards(now = Date.now()) {
+      return newCardCandidates(now).queue;
+    }
+
+    function todayTaskSummary() {
+      const scopedTasks = entriesForDate(localDateKey(Date.now()));
+      return {
+        total: scopedTasks.length,
+        completed: scopedTasks.filter(({ completedAt }) => Number.isFinite(completedAt)).length,
+        pending: scopedTasks.filter(({ completedAt }) => !Number.isFinite(completedAt)).length
+      };
+    }
+
+    function todayTaskEntries() {
+      return entriesForDate(localDateKey(Date.now()))
+        .filter(({ completedAt }) => !Number.isFinite(completedAt));
+    }
+
+    function dueCards() {
+      return todayTaskEntries().map((entry) => entry.card);
+    }
+
+    function randomCards() {
+      const cards = [...scopedCards];
+      for (let index = cards.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [cards[index], cards[swapIndex]] = [cards[swapIndex], cards[index]];
+      }
+      return cards;
     }
 
     function futureCards(now = Date.now()) {
       return scopedCards
         .map((card) => ({ card, due: progress.cards[card.id]?.due }))
-        .filter((entry) => Number.isFinite(entry.due) && entry.due > now)
+        .filter((entry) => Number.isFinite(entry.due) && entry.due > now && !isNewLearningCard(progress.cards[entry.card.id]))
         .sort((left, right) => left.due - right.due || left.card.id.localeCompare(right.card.id));
     }
 
@@ -363,28 +411,34 @@
       if (key <= today) {
         const tasks = progress.days[key]?.cards || {};
         return Object.entries(tasks)
-          .filter(([id]) => scopedIds.has(id))
+          .filter(([id, task]) => scopedIds.has(id) && Number.isFinite(task?.due))
           .map(([id, task]) => ({ card: cardById.get(id), due: task.due, completedAt: task.completedAt }))
           .filter((entry) => entry.card)
           .sort((left, right) => left.due - right.due || left.card.id.localeCompare(right.card.id));
       }
       return scopedCards
         .map((card) => ({ card, due: progress.cards[card.id]?.due, completedAt: null }))
-        .filter((entry) => Number.isFinite(entry.due) && localDateKey(entry.due) === key)
+        .filter((entry) => Number.isFinite(entry.due) && localDateKey(entry.due) === key && !isNewLearningCard(progress.cards[entry.card.id]))
         .sort((left, right) => left.due - right.due || left.card.id.localeCompare(right.card.id));
+    }
+
+    function planEntriesForDate(key) {
+      const entries = entriesForDate(key);
+      return key === localDateKey(Date.now())
+        ? entries.filter(({ completedAt }) => !Number.isFinite(completedAt))
+        : entries;
     }
 
     function statusForDate(key) {
       if (key > localDateKey(Date.now())) return 'neutral';
-      const tasks = progress.days[key]?.cards || {};
-      const scopedTasks = Object.entries(tasks).filter(([id]) => scopedIds.has(id)).map(([, task]) => task);
-      if (!scopedTasks.length) return 'neutral';
-      return scopedTasks.every((task) => Number.isFinite(task.completedAt)) ? 'complete' : 'missed';
+      const entries = entriesForDate(key);
+      if (!entries.length) return 'neutral';
+      return entries.every((entry) => Number.isFinite(entry.completedAt)) ? 'complete' : 'missed';
     }
 
     function calendarCell(date, currentMonth) {
       const key = localDateKey(date.getTime());
-      const entries = entriesForDate(key);
+      const entries = planEntriesForDate(key);
       const status = statusForDate(key);
       const isToday = key === localDateKey(Date.now());
       const isOutside = date.getMonth() !== currentMonth.getMonth();
@@ -439,7 +493,7 @@
     }
 
     function openDrawer(key, trigger) {
-      const entries = entriesForDate(key);
+      const entries = planEntriesForDate(key);
       if (!entries.length) return;
       closeDrawer();
       const keydown = (event) => {
@@ -466,13 +520,16 @@
     function renderCalendar() {
       if (!plan) return;
       drawerState = null;
-      const year = calendarMonth.getFullYear();
-      const month = calendarMonth.getMonth();
-      const gridStart = new Date(year, month, 1 - new Date(year, month, 1).getDay(), 12);
-      const days = Array.from({ length: 42 }, (_, index) => new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index, 12));
+      const year = calendarMonth.getUTCFullYear();
+      const month = calendarMonth.getUTCMonth();
+      const firstDay = new Date(Date.UTC(year, month, 1, 12));
+      const gridStart = new Date(Date.UTC(year, month, 1 - firstDay.getUTCDay(), 12));
+      const days = Array.from({ length: 42 }, (_, index) => new Date(Date.UTC(gridStart.getUTCFullYear(), gridStart.getUTCMonth(), gridStart.getUTCDate() + index, 12)));
       const future = futureCards();
       const next = future[0]?.due;
-      const nextText = next ? `${new Date(next).getMonth() + 1}月${new Date(next).getDate()}日` : '暂无安排';
+      const nextText = next
+        ? new Intl.DateTimeFormat('zh-CN', { timeZone: TIME_ZONE, month: 'numeric', day: 'numeric' }).format(new Date(next))
+        : '暂无安排';
       const hasAny = future.length || Object.keys(progress.days).some((key) => entriesForDate(key).length);
       const calendar = hasAny
         ? `<div class="hfc-calendar">
@@ -485,41 +542,91 @@
 
       plan.innerHTML = `<header class="hfc-plan-head"><div><span>下一次复习</span><h2 id="hfc-plan-title">复习计划</h2><small>${escapeHtml(nextText)}</small></div><p>未来共 ${future.length} 题</p></header>${calendar}`;
       plan.querySelectorAll('[data-hfc-month]').forEach((button) => button.addEventListener('click', () => {
-        calendarMonth = new Date(year, month + (button.dataset.hfcMonth === 'next' ? 1 : -1), 1);
+        calendarMonth = new Date(Date.UTC(year, month + (button.dataset.hfcMonth === 'next' ? 1 : -1), 1, 12));
         renderCalendar();
       }));
       plan.querySelectorAll('[data-hfc-date]').forEach((button) => button.addEventListener('click', () => openDrawer(button.dataset.hfcDate, button)));
     }
 
-    function shellHeader(remaining, isEmpty = false) {
-      const total = completed + remaining;
-      const progressPercent = total ? Math.round((completed / total) * 100) : 0;
-      const metrics = isEmpty
-        ? `<div class="hfc-session-metrics" aria-label="待复习 0"><span class="hfc-session-metric hfc-session-metric--pending"><i aria-hidden="true"></i><span>待复习</span><strong>0</strong></span></div>`
-        : `<div class="hfc-session-metrics" aria-label="已完成 ${completed} · 待复习 ${remaining}"><span class="hfc-session-metric hfc-session-metric--done"><i aria-hidden="true"></i><span>已完成</span><strong>${completed}</strong></span><span class="hfc-session-metrics__divider" aria-hidden="true"></span><span class="hfc-session-metric hfc-session-metric--pending"><i aria-hidden="true"></i><span>待复习</span><strong>${remaining}</strong></span></div>`;
-      return `<header class="hfc-session-head" style="--hfc-session-progress:${progressPercent}%">
-        <div class="hfc-session-head__row"><h2>今日复习</h2>${metrics}</div>
-        <div class="hfc-session-progress" aria-hidden="true"><span></span></div>
-      </header>${filterMarkup(params, config)}`;
+    function modeInfo() {
+      if (sessionMode === 'new') return { title: '新卡练习', doneLabel: '已学习' };
+      if (sessionMode === 'random') return { title: '随机练习', doneLabel: '已练习' };
+      return { title: '今日练习', doneLabel: '已完成' };
     }
 
-    function renderEmpty() {
-      const unseen = newCards().length;
-      stage.innerHTML = `<section class="hfc-session hfc-session--empty" data-hfc-session-state="empty">${shellHeader(0, true)}
-        <div class="hfc-empty"><span class="hfc-state-mark hfc-state-mark--empty" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 10.5h15a6 6 0 0 1 6 6v21H18a6 6 0 0 0-6 6z"/><path d="M36 10.5h-3v27h3z"/><path d="M17 18h10M17 24h10"/></svg></span><strong>暂无到期卡片</strong><p>你可以去学习新卡，或稍后再来</p><button class="hfc-button hfc-button--primary" type="button" data-hfc-new ${unseen ? '' : 'disabled'}>开始</button></div>
+    function modeNavMarkup(sessionRemaining) {
+      const today = todayTaskSummary();
+      const fresh = newCardSummary();
+      const todayRemaining = sessionMode === 'review' && sessionRemaining > 0 ? sessionRemaining : today.pending;
+      const newRemaining = sessionMode === 'new' && sessionRemaining > 0 ? sessionRemaining : fresh.available;
+      const buttons = [
+        { mode: 'review', label: `今日练习（剩余 ${todayRemaining}）`, disabled: todayRemaining === 0 },
+        { mode: 'new', label: `新卡练习（剩余 ${newRemaining}）`, disabled: newRemaining === 0 },
+        { mode: 'random', label: '随机练习', disabled: scopedCards.length === 0 }
+      ];
+      return `<nav class="hfc-mode-nav" aria-label="练习模式">${buttons.map((button) => `<button class="hfc-mode-nav__button${sessionMode === button.mode ? ' is-active' : ''}" type="button" data-hfc-mode="${button.mode}" aria-pressed="${sessionMode === button.mode}"${button.disabled ? ' disabled' : ''}>${button.label}</button>`).join('')}</nav>`;
+    }
+
+    function bindModeNavigation(container) {
+      container.querySelectorAll('[data-hfc-mode]').forEach((button) => button.addEventListener('click', () => {
+        if (button.dataset.hfcMode === 'review') start(dueCards(), 'review');
+        if (button.dataset.hfcMode === 'new') start(newCardCards(), 'new');
+        if (button.dataset.hfcMode === 'random') start(randomCards(), 'random');
+      }));
+    }
+
+    function shellHeader(remaining, isEmpty = false, emptyCompleted = 0) {
+      const info = modeInfo();
+      const doneCount = isEmpty ? (sessionMode === 'review' ? emptyCompleted : 0) : completed;
+      const total = doneCount + remaining;
+      const progressPercent = total ? Math.round((doneCount / total) * 100) : 0;
+      const hasDoneCount = !isEmpty || doneCount > 0;
+      const metrics = hasDoneCount
+        ? `<div class="hfc-session-metrics" aria-label="${info.doneLabel} ${doneCount} · 剩余 ${remaining}"><span class="hfc-session-metric hfc-session-metric--done"><i aria-hidden="true"></i><span>${info.doneLabel}</span><strong>${doneCount}</strong></span><span class="hfc-session-metrics__divider" aria-hidden="true"></span><span class="hfc-session-metric hfc-session-metric--pending"><i aria-hidden="true"></i><span>剩余</span><strong>${remaining}</strong></span></div>`
+        : `<div class="hfc-session-metrics" aria-label="剩余 ${remaining}"><span class="hfc-session-metric hfc-session-metric--pending"><i aria-hidden="true"></i><span>剩余</span><strong>${remaining}</strong></span></div>`;
+      const newSummary = sessionMode === 'new' ? newCardSummary() : null;
+      const quota = newSummary ? `<p class="hfc-session-note">今日额度 ${newSummary.started}/${newSummary.limit} · UTC+8 重置</p>` : '';
+      return `<header class="hfc-session-head" style="--hfc-session-progress:${progressPercent}%">
+        <div class="hfc-session-head__row"><h2>${info.title}</h2>${metrics}</div>
+        ${quota}<div class="hfc-session-progress" aria-hidden="true"><span></span></div>
+      </header>${modeNavMarkup(remaining)}${filterMarkup(params, config)}`;
+    }
+
+    function emptyCopy(mode, summary, fresh, hasScope) {
+      if (mode === 'new') {
+        if (fresh.quotaRemaining === 0 && (fresh.unstarted > 0 || fresh.started >= fresh.limit)) return { title: '今日新卡额度已用完', copy: '明天 UTC+8 00:00 后恢复' };
+        if (!fresh.available) return { title: '当前没有可学习的新卡', copy: hasScope ? '当前筛选范围没有未学习的新卡' : '当前筛选范围没有卡片' };
+      }
+      if (mode === 'random') return hasScope ? { title: '随机练习已结束', copy: '可以再次开始随机练习' } : { title: '当前没有可练习的卡片', copy: '当前筛选范围没有卡片' };
+      return summary.total > 0 && summary.pending === 0
+        ? { title: '今日练习已完成', copy: '今日练习已经全部完成' }
+        : { title: '今天没有待练习内容', copy: hasScope ? '可以开始新卡练习或随机练习' : '当前筛选范围没有卡片' };
+    }
+
+    function renderEmpty(mode = 'review') {
+      sessionMode = mode;
+      const summary = todayTaskSummary();
+      const fresh = newCardSummary();
+      const hasScope = scopedCards.length > 0;
+      const empty = emptyCopy(mode, summary, fresh, hasScope);
+      const remaining = mode === 'review' ? summary.pending : mode === 'new' ? fresh.available : 0;
+      const completedCount = mode === 'review' ? summary.completed : 0;
+      stage.innerHTML = `<section class="hfc-session hfc-session--empty" data-hfc-session-state="empty">${shellHeader(remaining, true, completedCount)}
+        <div class="hfc-empty"><span class="hfc-state-mark hfc-state-mark--empty" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 10.5h15a6 6 0 0 1 6 6v21H18a6 6 0 0 0-6 6z"/><path d="M36 10.5h-3v27h3z"/><path d="M17 18h10M17 24h10"/></svg></span><strong>${empty.title}</strong><p>${empty.copy}</p></div>
         <button class="hfc-reset" type="button" data-hfc-reset>${resetLabel()}</button>
       </section>`;
-      stage.querySelector('[data-hfc-new]')?.addEventListener('click', () => start(newCards()));
+      bindModeNavigation(stage);
       stage.querySelector('[data-hfc-reset]')?.addEventListener('click', resetProgress);
       renderCalendar();
-      announce('待复习 0');
+      announce(`${modeInfo().title} ${remaining}`);
     }
 
-    function start(cards) {
+    function start(cards, mode = 'review') {
       queue = [...cards];
+      sessionMode = mode;
       completed = 0;
       ratings = { again: 0, hard: 0, good: 0, easy: 0 };
-      if (!queue.length) return renderEmpty();
+      if (!queue.length) return renderEmpty(mode);
       renderCard();
     }
 
@@ -528,23 +635,31 @@
       if (!meta) return renderComplete();
       const token = ++renderToken;
       stage.innerHTML = `<section class="hfc-session hfc-session--loading" data-hfc-session-state="loading">${shellHeader(queue.length - completed)}<div class="hfc-card-loading" aria-label="正在加载卡片"><span></span></div></section>`;
+      bindModeNavigation(stage);
       try {
         const card = await loadCardContent(meta, config);
         if (token !== renderToken || !root.isConnected) return;
         const reviewedAt = Date.now();
+        if (sessionMode === 'new' && !progress.cards[card.id] && queueApi.markNewCardStarted(progress, card.id, reviewedAt)) {
+          saveProgress(progress);
+          syncController?.markDirty();
+        }
         const preview = scheduler.repeat(deserializeCard(progress.cards[card.id], reviewedAt), new Date(reviewedAt));
         const predictions = Object.fromEntries(RATING_NAMES.map((rating) => [rating, serializeCard(preview[RATING_VALUES[rating]].card, rating)]));
         stage.innerHTML = `<section class="hfc-session hfc-session--reviewing" data-hfc-session-state="reviewing">${shellHeader(queue.length - completed)}${studyCardMarkup(card, completed + 1, predictions, reviewedAt, config)}</section>`;
+        bindModeNavigation(stage);
         stage.querySelectorAll('[data-hfc-rate]').forEach((button) => {
           button.addEventListener('click', (event) => {
             event.stopPropagation();
             record(card, button.dataset.hfcRate, reviewedAt);
           });
         });
+        prepareCodeBlocks(stage);
         prepareFlips(stage);
         renderCalendar();
         prefetchCard(queue[completed + 1], config);
-        announce(`已完成 ${completed} · 待复习 ${queue.length - completed}`);
+        const info = modeInfo();
+        announce(`${info.doneLabel} ${completed} · 剩余 ${queue.length - completed}`);
       } catch (error) {
         stage.innerHTML = `<section class="hfc-session hfc-session--error"><p>卡片加载失败，请稍后重试。</p><button class="hfc-button hfc-button--primary" type="button" data-hfc-retry>重试</button></section>`;
         stage.querySelector('[data-hfc-retry]')?.addEventListener('click', renderCard);
@@ -556,15 +671,16 @@
       const previous = progress.cards[card.id];
       const today = localDateKey(reviewedAt);
       const wasScheduled = Boolean(previous && Number.isFinite(previous.due) && previous.due <= reviewedAt);
-      if (wasScheduled) {
+      if (sessionMode === 'review' && wasScheduled) {
         const originalDueKey = localDateKey(previous.due);
         ensureTask(progress, originalDueKey, card.id, previous.due);
         const todayTask = ensureTask(progress, today, card.id, previous.due);
         todayTask.completedAt = reviewedAt;
       }
       const result = scheduler.next(deserializeCard(previous, reviewedAt), new Date(reviewedAt), RATING_VALUES[rating]);
-      progress.cards[card.id] = serializeCard(result.card, rating);
-      if (localDateKey(result.card.due.getTime()) === today) {
+      const learningMode = result.card.state === 1 && (!previous || previous?.learningMode === 'new') ? 'new' : undefined;
+      progress.cards[card.id] = serializeCard(result.card, rating, learningMode);
+      if (sessionMode === 'review' && localDateKey(result.card.due.getTime()) === today) {
         const task = ensureTask(progress, today, card.id, result.card.due.getTime());
         task.due = result.card.due.getTime();
         task.completedAt = null;
@@ -577,18 +693,23 @@
     }
 
     function renderComplete() {
+      const isReview = sessionMode === 'review';
+      const info = modeInfo();
+      const title = `${info.title}已完成`;
+      const summary = isReview ? `共练习 ${queue.length} 张卡片，明天再见 👋` : `共练习 ${queue.length} 张卡片`;
       stage.innerHTML = `<section class="hfc-session hfc-session--complete" data-hfc-session-state="complete">${shellHeader(0)}
-        <div class="hfc-complete"><span class="hfc-state-mark hfc-state-mark--complete" aria-hidden="true">✓</span><strong>今日复习已全部完成</strong><p>共复习 ${queue.length} 张卡片，明天再见 👋</p><button class="hfc-button hfc-button--primary" type="button" data-hfc-stats>查看今日复习统计</button>
+        <div class="hfc-complete"><span class="hfc-state-mark hfc-state-mark--complete" aria-hidden="true">✓</span><strong>${title}</strong><p>${summary}</p><div class="hfc-complete-actions">${isReview ? '<button class="hfc-button hfc-button--secondary" type="button" data-hfc-stats>查看今日练习统计</button>' : ''}</div>
           <div class="hfc-today-stats" data-hfc-today-stats hidden>${RATING_NAMES.map((rating) => `<div><strong>${RATING_LABELS[rating]}</strong><span>${ratings[rating]}</span></div>`).join('')}</div>
         </div>
         <button class="hfc-reset" type="button" data-hfc-reset>${resetLabel()}</button>
       </section>`;
+      bindModeNavigation(stage);
       stage.querySelector('[data-hfc-stats]')?.addEventListener('click', () => {
         stage.querySelector('[data-hfc-today-stats]').hidden = false;
       });
       stage.querySelector('[data-hfc-reset]')?.addEventListener('click', resetProgress);
       renderCalendar();
-      announce(`已完成 ${queue.length} · 待复习 0`);
+      announce(`${info.title}已完成 ${queue.length}`);
     }
 
     async function resetProgress() {
@@ -605,8 +726,8 @@
       syncController?.resetLocalMetadata();
       progress = loadProgress();
       const due = dueCards();
-      if (due.length) start(due);
-      else renderEmpty();
+      if (due.length) start(due, 'review');
+      else renderEmpty('review');
     }
 
     try {
@@ -642,6 +763,119 @@
   }
 
   const observedFlips = new WeakSet();
+  const codeFeedbackTimers = new WeakMap();
+
+  function codeLanguage(block) {
+    const code = block.querySelector('code[class*="language-"], code[class*="lang-"]');
+    const languageClass = [...(code?.classList || [])].find(
+      (name) => name.startsWith('language-') || name.startsWith('lang-')
+    );
+    const figureLanguage = [...block.classList].find((name) => !['highlight', 'hfc-code'].includes(name) && !name.startsWith('hfc-'));
+    const language = block.dataset.language
+      || languageClass?.replace(/^(?:language|lang)-/, '')
+      || figureLanguage
+      || 'Code';
+    return ['plain', 'text', 'plaintext'].includes(language.toLowerCase()) ? 'CODE' : language.toUpperCase();
+  }
+
+  function codeText(block) {
+    const source = block.querySelector('table .code pre, pre code, .code pre, code');
+    return source?.innerText || source?.textContent || '';
+  }
+
+  async function copyCode(text) {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (_) {
+        // Clipboard permissions can be unavailable on local or embedded pages.
+      }
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+    document.body.append(textarea);
+    textarea.select();
+    const copied = document.execCommand?.('copy');
+    textarea.remove();
+    if (!copied) throw new Error('Clipboard is unavailable');
+  }
+
+  function setCodeCopyState(button, status, state) {
+    const label = state === 'success' ? '已复制' : state === 'error' ? '复制失败' : '复制代码';
+    button.dataset.hfcCodeCopyState = state;
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.querySelector('[data-hfc-code-copy-label]').textContent = state === 'idle' ? '' : label;
+    status.textContent = state === 'success' ? '代码已复制' : state === 'error' ? '代码复制失败' : '';
+    clearTimeout(codeFeedbackTimers.get(button));
+    if (state !== 'idle') {
+      codeFeedbackTimers.set(button, setTimeout(() => setCodeCopyState(button, status, 'idle'), 1600));
+    }
+  }
+
+  function codeToolbar(language) {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'hfc-code-toolbar';
+    toolbar.innerHTML = `
+      <span class="hfc-code-mac" aria-hidden="true"><i></i><i></i><i></i></span>
+      <strong class="hfc-code-language"></strong>
+      <span class="hfc-code-toolbar__spacer"></span>
+      <button class="hfc-code-action hfc-code-copy" type="button" data-hfc-code-copy data-hfc-code-copy-state="idle" title="复制代码" aria-label="复制代码">
+        <svg class="hfc-code-copy__copy" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></svg>
+        <svg class="hfc-code-copy__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+        <span data-hfc-code-copy-label></span>
+      </button>
+      <button class="hfc-code-action hfc-code-collapse" type="button" data-hfc-code-collapse title="折叠代码" aria-label="折叠代码" aria-expanded="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <span class="hfc-code-status" data-hfc-code-status aria-live="polite"></span>`;
+    toolbar.querySelector('.hfc-code-language').textContent = language;
+    return toolbar;
+  }
+
+  function prepareCodeBlocks(scope = document) {
+    scope.querySelectorAll('[data-hfc-flip] figure.highlight, [data-hfc-flip] pre').forEach((candidate) => {
+      let block = candidate.closest('figure.highlight, figure[data-hfc-code]') || candidate;
+      if (block.dataset.hfcCodeReady === 'true') return;
+      if (block.tagName === 'PRE') {
+        const language = codeLanguage(block);
+        const wrapper = document.createElement('figure');
+        wrapper.className = 'highlight';
+        wrapper.dataset.language = language;
+        block.replaceWith(wrapper);
+        wrapper.append(block);
+        block = wrapper;
+      }
+      block.dataset.hfcCode = '';
+      block.dataset.hfcCodeReady = 'true';
+      block.classList.add('hfc-code');
+      const toolbar = codeToolbar(codeLanguage(block));
+      block.insertBefore(toolbar, block.firstChild);
+      const copyButton = toolbar.querySelector('[data-hfc-code-copy]');
+      const collapseButton = toolbar.querySelector('[data-hfc-code-collapse]');
+      const status = toolbar.querySelector('[data-hfc-code-status]');
+      copyButton.addEventListener('click', async () => {
+        const text = codeText(block);
+        if (!text) return setCodeCopyState(copyButton, status, 'error');
+        try {
+          await copyCode(text);
+          setCodeCopyState(copyButton, status, 'success');
+        } catch (_) {
+          setCodeCopyState(copyButton, status, 'error');
+        }
+      });
+      collapseButton.addEventListener('click', () => {
+        const collapsed = block.classList.toggle('hfc-code--collapsed');
+        collapseButton.setAttribute('aria-expanded', String(!collapsed));
+        collapseButton.setAttribute('aria-label', collapsed ? '展开代码' : '折叠代码');
+        collapseButton.title = collapsed ? '展开代码' : '折叠代码';
+      });
+    });
+  }
+
   function resizeFlip(card) {
     const face = card.querySelector(card.classList.contains('is-flipped') ? '[data-hfc-face="back"]' : '[data-hfc-face="front"]');
     const inner = card.querySelector('[data-hfc-flip-inner]');
@@ -673,7 +907,7 @@
     window.__hexoFlashcardFlipReady = true;
     document.addEventListener('click', (event) => {
       const card = event.target.closest('[data-hfc-flip]');
-      if (!card || event.target.closest('a, button, input, select, textarea')) return;
+      if (!card || event.target.closest('a, button, input, select, textarea, [data-hfc-code]')) return;
       setFlipped(card, !card.classList.contains('is-flipped'));
     });
     document.addEventListener('keydown', (event) => {
@@ -711,6 +945,7 @@
       activeSyncController = null;
     }
     initFlipInteractions();
+    prepareCodeBlocks();
     prepareFlips();
     document.querySelectorAll('[data-hfc-app]').forEach(createApp);
     placeArticleReviewActions();

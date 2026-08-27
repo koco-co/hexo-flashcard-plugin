@@ -15,7 +15,13 @@ HTTP 404 表示什么？
 --- answer
 请求的资源不存在。
 --- explanation
-服务器没有找到目标资源。
+服务器没有找到目标资源。下面的查询用于定位缺失记录：
+
+```sql
+SELECT id, path
+FROM resources
+WHERE path = '/missing';
+```
 {% endflashcard %}
 
 {% flashcard cloze id:http-cache tags:"缓存" priority:2 %}
