@@ -104,6 +104,58 @@
     return !progress || !Number.isFinite(progress.last_review);
   }
 
+  function ensureDay(progress, key) {
+    if (!progress.days[key]) progress.days[key] = { cards: {} };
+    if (!progress.days[key].cards) progress.days[key].cards = {};
+    return progress.days[key];
+  }
+
+  function ensureTask(progress, key, cardId, due) {
+    const day = ensureDay(progress, key);
+    if (!day.cards[cardId]) day.cards[cardId] = { due, completedAt: null };
+    return day.cards[cardId];
+  }
+
+  // 只有今日练习评价会创建或完成每日任务；新卡练习和随机练习不改变打卡数量。
+  // 当天任务即使 due 晚于当前时刻也在今日队列中，评价后必须写入 completedAt。
+  function recordDailyTask(progress, options) {
+    const cardId = options?.cardId;
+    const reviewedAt = finiteNumber(options?.reviewedAt);
+    if (!progress || !validCardId(cardId) || reviewedAt === null) return;
+    if (options?.sessionMode !== 'review') return;
+    const previousDue = finiteNumber(options?.previousDue);
+    if (previousDue === null) return;
+    const todayKey = dateKey(reviewedAt);
+    if (previousDue <= reviewedAt) {
+      // 逾期的原日快照只建账不改写，次日补做不追溯清除前一天的未完成记录。
+      ensureTask(progress, dateKey(previousDue), cardId, previousDue);
+    }
+    const todayTask = ensureTask(progress, todayKey, cardId, previousDue);
+    todayTask.completedAt = reviewedAt;
+    const nextDueAt = finiteNumber(options?.nextDueAt);
+    if (nextDueAt !== null && dateKey(nextDueAt) === todayKey) {
+      // 10 分钟学习步骤仍落在今天，任务保持待练习并更新当次 due。
+      const task = ensureTask(progress, todayKey, cardId, nextDueAt);
+      task.due = nextDueAt;
+      task.completedAt = null;
+    }
+  }
+
+  function reconcileDailyTasks(progress, cards, now = Date.now()) {
+    const before = JSON.stringify(progress.days);
+    const todayKey = dateKey(now);
+    (Array.isArray(cards) ? cards : []).forEach((card) => {
+      const state = progress.cards?.[card.id];
+      if (isNewLearning(state)) return;
+      if (!Number.isFinite(state?.due)) return;
+      const dueKey = dateKey(state.due);
+      if (dueKey > todayKey) return;
+      ensureTask(progress, dueKey, card.id, state.due);
+      if (dueKey < todayKey) ensureTask(progress, todayKey, card.id, state.due);
+    });
+    return before !== JSON.stringify(progress.days);
+  }
+
   function isNewLearning(progress) {
     return Number(progress?.state) === 1 && progress?.learningMode === 'new';
   }
@@ -182,11 +234,14 @@
     dailyNewCardSummary,
     dateFromKey,
     dateKey,
+    ensureTask,
     isNewLearning,
     isUnreviewed,
     markNewCardStarted,
     mergeNewCardDays,
     normalizeNewCardDays,
+    recordDailyTask,
+    reconcileDailyTasks,
     startedNewCardIds
   };
 });

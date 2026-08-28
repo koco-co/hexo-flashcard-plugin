@@ -223,38 +223,10 @@
     return `<div class="hfc-filter">${labels.map((label) => `<span>${label}</span>`).join('')}<a href="${escapeHtml(`${joinUrl(config.root, config.learningPath)}/`)}">清除筛选</a></div>`;
   }
 
-  function ensureDay(progress, key) {
-    if (!progress.days[key]) progress.days[key] = { cards: {} };
-    if (!progress.days[key].cards) progress.days[key].cards = {};
-    return progress.days[key];
-  }
-
-  function ensureTask(progress, key, cardId, due) {
-    const day = ensureDay(progress, key);
-    if (!day.cards[cardId]) day.cards[cardId] = { due, completedAt: null };
-    return day.cards[cardId];
-  }
-
   function isNewLearningCard(state) {
     return window.HFC_QUEUE?.isNewLearning
       ? window.HFC_QUEUE.isNewLearning(state)
       : Number(state?.state) === 1 && state?.learningMode === 'new';
-  }
-
-  function reconcileDailyTasks(progress, cards, now = Date.now()) {
-    const before = JSON.stringify(progress.days);
-    const today = localDateKey(now);
-    cards.forEach((card) => {
-      const state = progress.cards[card.id];
-      if (isNewLearningCard(state)) return;
-      if (!Number.isFinite(state?.due)) return;
-      const dueKey = localDateKey(state.due);
-      if (dueKey > today) return;
-      ensureTask(progress, dueKey, card.id, state.due);
-      if (dueKey < today) ensureTask(progress, today, card.id, state.due);
-    });
-    saveProgress(progress);
-    return before !== JSON.stringify(progress.days);
   }
 
   async function createApp(root) {
@@ -344,7 +316,8 @@
     function applySyncedProgress(nextProgress) {
       progress = nextProgress;
       saveProgress(progress);
-      const derivedChange = allCards.length ? reconcileDailyTasks(progress, allCards) : false;
+      const derivedChange = allCards.length ? queueApi.reconcileDailyTasks(progress, allCards) : false;
+      if (derivedChange) saveProgress(progress);
       refreshFromProgress();
       return derivedChange;
     }
@@ -669,22 +642,16 @@
     function record(card, rating, reviewedAt) {
       stage.querySelectorAll('[data-hfc-rate]').forEach((button) => { button.disabled = true; });
       const previous = progress.cards[card.id];
-      const today = localDateKey(reviewedAt);
-      const wasScheduled = Boolean(previous && Number.isFinite(previous.due) && previous.due <= reviewedAt);
-      if (sessionMode === 'review' && wasScheduled) {
-        const originalDueKey = localDateKey(previous.due);
-        ensureTask(progress, originalDueKey, card.id, previous.due);
-        const todayTask = ensureTask(progress, today, card.id, previous.due);
-        todayTask.completedAt = reviewedAt;
-      }
       const result = scheduler.next(deserializeCard(previous, reviewedAt), new Date(reviewedAt), RATING_VALUES[rating]);
       const learningMode = result.card.state === 1 && (!previous || previous?.learningMode === 'new') ? 'new' : undefined;
+      queueApi.recordDailyTask(progress, {
+        cardId: card.id,
+        previousDue: previous && Number.isFinite(previous.due) ? previous.due : null,
+        nextDueAt: result.card.due.getTime(),
+        reviewedAt,
+        sessionMode
+      });
       progress.cards[card.id] = serializeCard(result.card, rating, learningMode);
-      if (sessionMode === 'review' && localDateKey(result.card.due.getTime()) === today) {
-        const task = ensureTask(progress, today, card.id, result.card.due.getTime());
-        task.due = result.card.due.getTime();
-        task.completedAt = null;
-      }
       saveProgress(progress);
       syncController?.markDirty();
       ratings[rating] += 1;
@@ -737,7 +704,7 @@
       cardById = new Map(allCards.map((card) => [card.id, card]));
       scopedCards = scopeCards(allCards);
       scopedIds = new Set(scopedCards.map((card) => card.id));
-      reconcileDailyTasks(progress, allCards);
+      if (queueApi.reconcileDailyTasks(progress, allCards)) saveProgress(progress);
       const due = dueCards();
       if (due.length) start(due);
       else renderEmpty();
